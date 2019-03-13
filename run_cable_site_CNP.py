@@ -555,7 +555,6 @@ class RunCable(object):
 
         fname = "%s_out_CASA_ccp%d.nc" % (self.experiment_id, num)
         fname = os.path.join(self.output_dir, fname)
-        print(fname)
         ds = xr.open_dataset(fname)
         new_cplant = ds.cplant[:,:,0].values[-1].sum() * g_2_kg
         new_csoil = ds.csoil[:,:,0].values[-1].sum() * g_2_kg
