@@ -6,9 +6,9 @@
 
 # Global settings:
 SITE_LIST=OzFLUX_sitelist_v1.txt
-#SITE_LIST=test_sitelist1.txt
-TEMPLATE_DIR=Cumberland_Template  # assumed to be in current directory!
-BASE_DIR=$PWD
+#SITE_LIST=test.txt
+BASE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files
+SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP_OzFLUX
 FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
 
@@ -29,16 +29,19 @@ for site in $sites; do
     echo starting site $site
     
     # create working directory if not existing (copy from template directory)
-    WD=${BASE_DIR}/${site}
+    WD=${SITE_DIR}/${site}
     if [ ! -d $WD ]; then
-	cp -r ${BASE_DIR}/${TEMPLATE_DIR}/ $WD/
+	mkdir $WD
 
         cd $WD
 
 	# copy files and create links
-	rm cable
 	ln -s ${CODE_DIR}/offline/cable cable
-	cp ../Cumberland_copy/reset_restart.bash .
+	cp ${BASE_DIR}/reset_restart.bash .
+        cp ${BASE_DIR}/run_cable_site_CNP.py .
+	cp ${BASE_DIR}/run_cable_site_CNP_meta.py .
+	cp -r ${BASE_DIR}/params .
+	cp -r ${BASE_DIR}/namelists .
 	chmod -R 755 *  # permissions
 	ln -s $FORCING_DIR met
 	ln -s /data/hav014/CABLE-AUX  # to be generalized...
