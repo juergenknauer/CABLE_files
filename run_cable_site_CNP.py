@@ -103,7 +103,6 @@ class RunCable(object):
                 self.logfile="log_ccp%d" % (num)
                 self.setup_re_spin(number=num)
                 self.run_me()
-                sys.exit()
                 self.clean_up(end=False, tag="ccp%d" % (num))
                 self.logfile="log_sa%d" % (num)
                 self.setup_analytical_spin(number=num, st_yr_spin=st_yr_spin,
@@ -112,7 +111,6 @@ class RunCable(object):
                 self.clean_up(end=False, tag="saa%d" % (num))
                 #sys.exit()
                 not_in_equilibrium = self.check_steady_state(num)
-                sys.exit()
                 num += 1
                 
             not_in_equilibrium=True
@@ -677,7 +675,7 @@ if __name__ == "__main__":
 
 
 
-    call_pop = False
+    call_pop = True
     verbose = False
 
     if not os.path.exists(restart_dir):
