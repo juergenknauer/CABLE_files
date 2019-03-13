@@ -555,6 +555,7 @@ class RunCable(object):
 
         fname = "%s_out_CASA_ccp%d.nc" % (self.experiment_id, num)
         fname = os.path.join(self.output_dir, fname)
+        print(fname)
         ds = xr.open_dataset(fname)
         new_cplant = ds.cplant[:,:,0].values[-1].sum() * g_2_kg
         new_csoil = ds.csoil[:,:,0].values[-1].sum() * g_2_kg
@@ -586,8 +587,9 @@ class RunCable(object):
             f = "new_sumbal"
             if os.path.isfile(f):
                 os.remove(f)
-            for f in glob.glob("*.out"):
-                os.remove(f)
+            # JK: no longer remove .out file!
+            # for f in glob.glob("*.out"):
+            #    os.remove(f)
             for f in glob.glob("restart_*.nc"):
                 os.remove(f)
         else:
@@ -674,7 +676,7 @@ if __name__ == "__main__":
 
 
 
-    call_pop = True
+    call_pop = False
     verbose = False
 
     if not os.path.exists(restart_dir):

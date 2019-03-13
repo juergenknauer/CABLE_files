@@ -606,8 +606,9 @@ class RunCable(object):
             f = "new_sumbal"
             if os.path.isfile(f):
                 os.remove(f)
-            for f in glob.glob("*.out"):
-                os.remove(f)
+            #JK: no longer remove .out files 
+            #for f in glob.glob("*.out"):
+            #    os.remove(f)
             for f in glob.glob("restart_*.nc"):
                 os.remove(f)
         else:
