@@ -1,13 +1,12 @@
 #!/bin/ksh
 
 # This script runs CABLE at OzFLUX/FLUXNET sites
-# Juergen Knauer, February 2019
+# Juergen Knauer, February/March 2019
 #
 
 # Global settings:
 SITE_LIST=OzFLUX_sitelist_v1.txt
 #SITE_LIST=test.txt
-BASE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 LOG_DIR=${SITE_DIR}/logs
 CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP_OzFLUX
@@ -17,12 +16,17 @@ LAI_feedback=FALSE
 
 
 
+### no changes needed beyond that point ###
+
 # site names and number of sites
 sites=$(cut -f 1 $SITE_LIST)
 let nr_sites=$(wc -l $SITE_LIST | awk '{print $1}')-1 
 
 # clean up slurm file
 sed -i '34,$d' run_cable_casa.slurm
+
+# set current directory as base directory
+BASE_DIR=$PWD
 
 # define (and create) log folder
 if [ ! -d $LOG_DIR ]; then
