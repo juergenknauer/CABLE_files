@@ -8,10 +8,6 @@
 
 #SBATCH --ntasks-per-node=1
 
-#SBATCH --error=logs/%x_%a.err
-
-#SBATCH --output=logs/%x_%a.out
-
 #SBATCH --nodes=1
 
 module del intel-cc intel-fc
@@ -31,4 +27,5 @@ module add netcdf/4.3.3.1 openmpi/1.8.8
 #./scripts/run_cable_premet.bash
 #./scripts/run_cable_1900_1989.bash
 #./scripts/run_cable_1990_2017.bash
+python ./run_cable_site_CNP_meta.py AdelaideRiver 2008 2008 FALSE
 python ./run_cable_site_CNP_meta.py AdelaideRiver 2008 2008 FALSE

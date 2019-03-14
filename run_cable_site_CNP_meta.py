@@ -32,7 +32,7 @@ import numpy as np
 class RunCable(object):
 
     def __init__(self, experiment_id, startyear, endyear, lai_feedback,
-                 namelist_dir, param_dir, output_dir, restart_dir,
+                 site_dir, namelist_dir, param_dir, output_dir, restart_dir,
                  dump_dir, met_fname, co2_ndep_fname, nml_fn,
                  site_nml_fn,veg_param_fn,log_dir, exe, aux_dir,
                  biogeochem, call_pop, verbose):
@@ -41,6 +41,7 @@ class RunCable(object):
         self.startyear = startyear
         self.endyear = endyear
         self.lai_feedback = lai_feedback
+        self.site_dir = site_dir
         self.namelist_dir = namelist_dir
         self.param_dir = param_dir
         self.output_dir = output_dir
@@ -86,7 +87,7 @@ class RunCable(object):
     def main(self, SPIN_UP=False, TRANSIENT=False, SIMULATION=False):
 
         site=experiment_id.split('_')[0]
-        os.chdir(site)
+        os.chdir(site_dir + '/' + site)
 
         if not os.path.exists(restart_dir):
             os.makedirs(restart_dir)
@@ -671,7 +672,8 @@ if __name__ == "__main__":
     lai_feedback=sys.argv[4]
 
     
-    cwd = os.getcwd()
+    #cwd = os.getcwd()
+    site_dir = "/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site"
     namelist_dir = "namelists"
     param_dir = "params"
     dump_dir = "dump"
@@ -708,7 +710,7 @@ if __name__ == "__main__":
 
         # experiment_id = "Cumberland_POP_%s" % (biogeochem)
         experiment_id = site + "_%s_2tiles" % (biogeochem)
-        C = RunCable(experiment_id, startyear, endyear, lai_feedback, namelist_dir,
+        C = RunCable(experiment_id, startyear, endyear, lai_feedback, site_dir, namelist_dir,
                      param_dir,output_dir, restart_dir,dump_dir, met_fname, co2_ndep_fname,
                      nml_fn, site_nml_fn,veg_param_fn, log_dir, exe, aux_dir,
                      biogeochem, call_pop,verbose)

@@ -9,6 +9,7 @@ SITE_LIST=OzFLUX_sitelist_v1.txt
 #SITE_LIST=test.txt
 BASE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
+LOG_DIR=${SITE_DIR}/logs
 CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP_OzFLUX
 FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
 
@@ -22,6 +23,12 @@ let nr_sites=$(wc -l $SITE_LIST | awk '{print $1}')-1
 
 # clean up slurm file
 sed -i '34,$d' run_cable_casa.slurm
+
+# define (and create) log folder
+if [ ! -d $LOG_DIR ]; then
+    mkdir $LOG_DIR
+fi
+
 
 
 for site in $sites; do
@@ -64,7 +71,7 @@ for site in $sites; do
 done
 
 ## send to cluster
-sbatch --array=1-${nr_sites} run_cable_casa.slurm
+sbatch --array=1-${nr_sites} --output=${LOG_DIR}/%x_%a.out --error=${LOG_DIR}/%x_%a.err run_cable_casa.slurm
 
 
 ## command line arguments to 'run_cable_site_CNP_meta.py'
