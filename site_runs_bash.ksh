@@ -1,6 +1,6 @@
 #!/bin/ksh
 
-# This script runs CABLE at OzFLUX/FLUXNET sites
+# This script runs CABLE at multiple OzFLUX/FLUXNET sites
 # Juergen Knauer, February/March 2019
 #
 
@@ -23,7 +23,7 @@ sites=$(cut -f 1 $SITE_LIST)
 let nr_sites=$(wc -l $SITE_LIST | awk '{print $1}')-1 
 
 # clean up slurm file
-sed -i '34,$d' run_cable_casa.slurm
+sed -i '29,$d' run_cable_casa.slurm
 
 # set current directory as base directory
 BASE_DIR=$PWD
@@ -70,7 +70,7 @@ for site in $sites; do
     # python run_cable_site_CNP_meta.py $site $startyear $endyear
 
     ## run on cluster (add to .slurm file):
-    echo python ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback >> run_cable_casa.slurm
+    echo python ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback $SITE_DIR >> run_cable_casa.slurm
         
 done
 

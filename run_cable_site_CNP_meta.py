@@ -670,10 +670,10 @@ if __name__ == "__main__":
     startyear=int(sys.argv[2])
     endyear=int(sys.argv[3])
     lai_feedback=sys.argv[4]
+    site_dir=sys.argv[5]
 
     
     #cwd = os.getcwd()
-    site_dir = "/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site"
     namelist_dir = "namelists"
     param_dir = "params"
     dump_dir = "dump"
