@@ -1,0 +1,8 @@
+vartitles,varnames_sim,varnames_obs,units
+Net Radiation,Rnet,Fn,W m-2
+Latent heat flux,Qle,Fe,W m-2
+Sensible heat flux,Qh,Fh,W m-2
+NEE,NEE,NEE_SOLO,umol m-2 s-1
+GPP,GPP,GPP_SOLO,umol m-2 s-1
+Autotrophic respiration,AutoResp,,umol m-2 s-1
+Heterotrophic respiration,HeteroResp,,umol m-2 s-1

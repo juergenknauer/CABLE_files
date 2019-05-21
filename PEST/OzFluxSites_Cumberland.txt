@@ -1,0 +1,7 @@
+2
+sitecode, sitename, startmm, startyy, endmm, endyy, lat, lon, patch
+'How', 'HowardSprings',      01, 2001, 12, 2011, -12.4952, 131.1501,'a'
+'Tum', 'Tumbarumba',         01, 2004, 12, 2010, -35.6566, 148.1517,'a'
+
+'ASM', 'AliceSprings',       09, 2010, 12, 2013, -22.283,  133.249, 'a'
+

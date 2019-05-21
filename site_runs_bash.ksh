@@ -5,12 +5,14 @@
 #
 
 # Global settings:
-SITE_LIST=OzFLUX_sitelist_v1.txt
+SITE_LIST=sites_plots.txt
 #SITE_LIST=test.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 LOG_DIR=${SITE_DIR}/logs
 CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP_OzFLUX
 FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
+OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
+PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
 
 LAI_feedback=FALSE
 
@@ -70,7 +72,8 @@ for site in $sites; do
     # python run_cable_site_CNP_meta.py $site $startyear $endyear
 
     ## run on cluster (add to .slurm file):
-    echo python ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback $SITE_DIR >> run_cable_casa.slurm
+    echo python ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback \
+	 $SITE_DIR $OBS_DIR $PLOT_DIR >> run_cable_casa.slurm
         
 done
 
@@ -83,4 +86,7 @@ sbatch --array=1-${nr_sites} --output=${LOG_DIR}/%x_%a.out --error=${LOG_DIR}/%x
 # 2: start year
 # 3: end year
 # 4: lai_feedback (TRUE or FALSE)
+# 5: site directory
+# 6: observations (EC data) directory
+# 7: plot directory (location of plotting scripts)
 

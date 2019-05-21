@@ -1,0 +1,30 @@
+	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation
+AdelaideRiver	2008	2008	-13.0769	131.1178	16.0	21.0	Woody Savanna
+AliceSpringsMulga	2011	2017	-22.283	133.249	6.0	13.0	Canopy + three types of understorey (vegetation1-4)
+Calperum	2011	2017	-34.00206	140.58912	3.0	20.0	Mallee
+CapeTribulation	2010	2017	-16.103219	145.446922	25.0	45.0	lowland complex mesophyll vine forest
+CowBay	2010	2017	-16.238189	145.42715	26.0	35.0	lowland complex mesophyll vine forest
+CumberlandPlain	2013	2017	-33.615278	150.723611	23.0	30.0	Dry sclerophyll forest
+DalyPasture	2008	2012	-17.1507	133.3502	0.0	5.0	Tropical improved pasture
+DalyUncleared	2008	2017	-14.1592	131.3881	16.0	21.0	Woody Savanna
+DryRiver	2009	2017	-15.2588	132.3706	0.0	15.0	Woodland savanna
+Emerald	2012	2013	-23.85872	148.4746	0.0		Mallee and crop
+FoggDam	2007	2007	-12.5452	131.3072	0.0	5.0	Ephemeral tropical wetland
+Gingin	2012	2017	-31.375	115.65	6.0	15.0	low banksia woodland
+GreatWesternWoodlands	2013	2017	-30.1914	120.654166667	18.0	36.0	sparse eucalypt woodland
+HowardSprings	2003	2017	-12.4952	131.15005	16.0	23.0	Woody savanna
+Litchfield	2016	2017	-13.17904178	130.7945459	16.0	30.0	Woody savanna
+Otway	2008	2009	-38.525	142.81	0.0	9.0	Pasture, grazed
+RedDirtMelonFarm	2012	2012	-14.563639	132.477567	16.0	21.0	Woody savannah then cleared
+Ridgefield	2017	2017	-32.506102	116.966827			
+RiggsCreek	2011	2016	-36.656	145.576	0.0		Pasture
+RobsonCreek	2014	2017	-17.11746943	145.6301375	28.0	40.0	Regional Ecosystem (RE) 7.3.36a, complex mesophyll vine forest
+Samford	2011	2017	-27.38806	152.87778	0.0	2.0	pasture
+SturtPlains	2009	2017	-17.1507	133.3502	0.0		Mitchell Grasslands
+TiTreeEast	2013	2017	-22.287	133.64	4.0	10.0	Open Corymbia-hummock savanna and Mulga patches
+Tumbarumba	2002	2017	-35.6566	148.1516	40.0	70.0	wet sclerophyll forest
+WallabyCreek	2006	2006	-37.4259	145.1878	10.0	11.0	Mountain Ash
+Warra	2014	2017	-43.09502	146.65452	55.0	80.0	Eucalyptus obliqua tall forest
+Whroo	2012	2016	-36.6732	145.0294	28.0	35.0	Dry sclerophyll woodland
+WombatStateForest	2011	2017	-37.4222	144.0944			Dry sclerophyll eucalypt forest
+Yanco	2013	2017	-34.9893	146.2907	0.3		Pasture

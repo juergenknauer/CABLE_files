@@ -1,0 +1,2 @@
+	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation
+US-Ha1	1991	2012	42.538	-72.172	25.0	40.0	mixed forest

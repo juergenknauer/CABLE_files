@@ -26,6 +26,6 @@ module add netcdf/4.3.3.1 openmpi/1.8.8
 #./scripts/run_cable_spinup.bash
 #./scripts/run_cable_premet.bash
 #./scripts/run_cable_1900_1989.bash
-#./scripts/run_cable_1990_2017.bash
-python ./run_cable_site_CNP_meta.py AdelaideRiver 2008 2008 FALSE
-python ./run_cable_site_CNP_meta.py AdelaideRiver 2008 2008 FALSE
+python ./run_cable_site_CNP_meta.py CumberlandPlain 2013 2017 FALSE /OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site /OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux /OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
+python ./run_cable_site_CNP_meta.py DalyPasture 2008 2012 FALSE /OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site /OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux /OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
+python ./run_cable_site_CNP_meta.py Tumbarumba 2002 2017 FALSE /OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site /OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux /OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
