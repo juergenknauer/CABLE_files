@@ -1,0 +1,8 @@
+&ExtractObservables_Namelist
+!
+! Select CABLE model output file 
+  FILE_NAME = "outputs/CumberlandPlain_CNP_out_cable.nc"
+!
+! Select POP ini file (only used for Auscover Biomass Plot Library obs) 
+  FILE_NAME_POP = "nil"
+/

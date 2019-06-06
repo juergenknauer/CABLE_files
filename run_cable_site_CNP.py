@@ -661,7 +661,7 @@ if __name__ == "__main__":
     nml_fn = "cable.nml"
     site_nml_fn = "site.nml"
     #met_fname = os.path.join(met_dir, '%s.1.4_met.nc' % (experiment_id))
-    met_fname = os.path.join(met_dir, 'DalyPasture_2008_2012.nc')
+    met_fname = os.path.join(met_dir, 'CumberlandPlain_2013_2017.nc')
     co2_ndep_fname = os.path.join(co2_ndep_dir,
                                   "AmaFACE_co2npdepforcing_1850_2100_AMB.csv")
     veg_param_fn = "Cumberland_veg_params.txt"
@@ -670,9 +670,9 @@ if __name__ == "__main__":
     exe = "./cable"
 
     # special for PEST
-    #veg_param_fn = "def_veg_params_pest.txt"
-    #bgc_param_fn = "pftlookup_pest.csv"
-    #param_dir = "./"
+    veg_param_fn = "def_veg_params_pest.txt"
+    bgc_param_fn = "pftlookup_pest.csv"
+    param_dir = "./"
 
 
 
@@ -694,9 +694,9 @@ if __name__ == "__main__":
     #for biogeochem in ["C", "CN", "CNP"]:
     for biogeochem in ["CNP"]:
 
-        experiment_id = "DalyPasture_%s" % (biogeochem)
+        experiment_id = "CumberlandPlain_%s_2tiles" % (biogeochem)
         C = RunCable(experiment_id, namelist_dir, param_dir, output_dir, restart_dir,
                      dump_dir, met_fname, co2_ndep_fname, nml_fn, site_nml_fn,
                      veg_param_fn, log_dir, exe, aux_dir, biogeochem, call_pop,
                      verbose)
-        C.main(SPIN_UP=True, TRANSIENT=True, SIMULATION=True)
+        C.main(SPIN_UP=False, TRANSIENT=False, SIMULATION=True)

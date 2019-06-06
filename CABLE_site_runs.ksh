@@ -5,7 +5,7 @@
 #
 
 # Global settings:
-SITE_LIST=sites_plots.txt
+SITE_LIST=OzFLUX_sitelist_v1.txt
 #SITE_LIST=test.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 LOG_DIR=${SITE_DIR}/logs

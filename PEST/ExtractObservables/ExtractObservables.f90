@@ -423,7 +423,7 @@ write(6,*) 'Calendar overwritten to "standard"'
   !  combination of csoil1, csoil2 and csoil3 with parameter soilc0_frac)
   write(6,*) 'Read ObsSpecs.txt'
   open(unit=25,file='ObsSpecs.txt',status='old')
-  read(25,*) nobs
+  read(25,*) nobs 
   allocate(obsname(nobs))
   allocate(obsinfo(nobs))
   allocate(grpname(nobs))

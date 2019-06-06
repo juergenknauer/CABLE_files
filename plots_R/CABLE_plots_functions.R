@@ -3,6 +3,8 @@
 ###################
 
 ## Parameters
+library(lubridate)
+library(ncdf4)
 secperday <- 86400
 
 plot.model.obs <- function(dmean_sim,dmean_obs,filename,agg){
@@ -89,11 +91,17 @@ plot.model.obs <- function(dmean_sim,dmean_obs,filename,agg){
         sim <- dmean_sim[dmean_sim[,"season"] == j,i]
         obs <- dmean_obs[dmean_obs[,"season"] == j,i]
         
-        plot(sim,col=col.sim,type='l',axes=FALSE,ylim=ylim,ylab="",xlab="Hour",xlim=xlim,mgp=c(1.6,0.35,0))
+        if (length(sim) > 24.1){
+          hour <- seq(0.5,24,0.5)
+        } else {
+          hour <- seq(1,24,1)
+        }
+        
+        plot(sim ~ hour,col=col.sim,type='l',axes=FALSE,ylim=ylim,ylab="",xlab="Hour",xlim=xlim,mgp=c(1.6,0.35,0))
         abline(h=lin,lty=2,col='grey80')
-        points(obs,col=col.obs,type='l',cex=cex.pt)
-        points(obs,col=col.obs,pch=1,lwd=lwd.pt,cex=cex.pt)
-        points(sim,col=col.sim,type='p',pch=16,cex=cex.pt)
+        points(obs ~ hour,col=col.obs,type='l',cex=cex.pt)
+        points(obs ~ hour,col=col.obs,pch=1,lwd=lwd.pt,cex=cex.pt)
+        points(sim ~ hour,col=col.sim,type='p',pch=16,cex=cex.pt)
         
         axis(1,at=1:length(sim),labels=T,tcl=tcl,mgp=c(2.5,0.5,0))
         axis(2,at=NULL,labels=TRUE,las=2,tcl=tcl,mgp=c(2.5,0.5,0))
@@ -178,14 +186,8 @@ sec.to.dmy <- function(time,startyear,endyear){
   }
   
   
-  if (secperday/tstep < 24.1){
-    hour <- floor(hod)
-  } else {
-    hour <- floor(hod/2)
-  }
-  
+  hour <- floor(hod)
   minute <- ifelse(hod %% 1 == 0,0,30)
-  
   
   time <- ymd_hms(paste(as.character(year),as.character(month),as.character(day),
                         as.character(hour),as.character(minute),"0",sep="-")) 
@@ -199,10 +201,12 @@ sec.to.dmy <- function(time,startyear,endyear){
 dmy.obs <- function(time_obs,origin='1800-01-01'){
   
   ## The timesteps are shifted one forward to match the simulated timesteps!!
-  time_obs <- time_obs - (time_obs[2] - time_obs[1])
+  # this is done in the calculation of the date now!
+  # The Ozflux convention is that the time step denotes the end of the time period
+  # time_obs <- time_obs - (time_obs[2] - time_obs[1])
   
-  tstep <- (time_obs[2] - time_obs[1])*secperday
-  date  <- as.Date(time_obs, origin=origin, format="%Y-%m-%d")
+  tstep <- round((time_obs[2] - time_obs[1])*secperday)
+  date  <- as.Date(time_obs - tstep/secperday, origin=origin, format="%Y-%m-%d")  # subtract time step here to avoid that 0 hour is the previous day!!
   
   year  <- as.numeric(substr(date,1,4))
   month <- as.numeric(substr(date,6,7))
@@ -216,8 +220,6 @@ dmy.obs <- function(time_obs,origin='1800-01-01'){
   season[month %in% c(9,10,11)] <- 4
   
   
-  ## assuming that the 'correct' timesteps start at (half-)hour 0.5/1 and end at 23 or 23.5
-  
   ## TODO: simplify the following lines!!
   nr_days <- length(unique(as.character(date)))
   if (tstep > 1801){
@@ -229,7 +231,7 @@ dmy.obs <- function(time_obs,origin='1800-01-01'){
   
   del <- integer()
   
-  start_missing <- round((time_obs[1] %% 1) * (secperday/tstep))
+  start_missing <- round((signif((time_obs[1]- tstep/secperday),nchar(as.character(time_obs[1]))+3) %% 1) * (secperday/tstep)) 
 cat("start missing:",start_missing,fill=TRUE)
   if (start_missing > 0){
     del <- c(1:start_missing)
@@ -237,30 +239,26 @@ cat("start missing:",start_missing,fill=TRUE)
   
   end_missing   <- 0
   if (time_obs[length(time_obs)] %% 1 != 0){
-    end_missing   <- round((1 - (time_obs[length(time_obs)] %% 1)) * (secperday/tstep)) - 1
+    end_missing   <- round((1 - (time_obs[length(time_obs)] %% 1)) * (secperday/tstep))
   } 
 cat("end missing:",end_missing,fill=TRUE)
   if (end_missing > 0){
     del <- c(del,c((length(hod)-end_missing+1) : length(hod)))
   }
   
-  
-  hod <- hod[-c(del)]
-  
-  
-  if (secperday/tstep < 24.1){
-    hour <- floor(hod)
-  } else {
-    hour <- floor(hod/2)
+  if (length(del) > 0){
+    hod <- hod[-c(del)]
   }
-  
+
+
+  hour   <- floor(hod)
   minute <- ifelse(hod %% 1 == 0,0,30)
   
   
   time <- ymd_hms(paste(as.character(year),as.character(month),as.character(day),
                         as.character(floor(hour)),as.character(minute),"0",sep="-")) 
   
-  return(data.frame(year,season,month,doy,hod,time))
+  return(data.frame(year,season,month,doy,day,hod,minute,time))
   
 }
 

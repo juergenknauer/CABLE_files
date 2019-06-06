@@ -704,7 +704,7 @@ if __name__ == "__main__":
     exe = "./cable"
 
     # special for PEST
-    #veg_param_fn = "def_veg_params_pest.txt"
+    #veg_param_fn = "veg_params_pest.txt"
     #bgc_param_fn = "pftlookup_pest.csv"
     #param_dir = "./"
 
@@ -724,4 +724,4 @@ if __name__ == "__main__":
                      param_dir,output_dir, restart_dir,dump_dir, met_fname, co2_ndep_fname,
                      nml_fn, site_nml_fn,veg_param_fn, log_dir, exe, aux_dir,
                      biogeochem, call_pop,verbose)
-        C.main(SPIN_UP=False, TRANSIENT=False, SIMULATION=True)
+        C.main(SPIN_UP=True, TRANSIENT=True, SIMULATION=True)

@@ -226,7 +226,7 @@ vegtype,unitless,unitless,unitless,unitless,??,gN/gP,gC/m2,gC/m2,micromol/m2/s,m
 ,la_to_sa,disturbance_interval,vcmax_walker_scalar,
 vegtype,unitless,years,unitless,unitless,unitless,unitless,
 1,5000, 100, 1.0,
-2,  #la_to_sa_ebf  # , 100, #vcmax_sc_ebf  # ,
+2,  #allocfrt_ebf  # , 100, #vcmax_sc_ebf  # ,
 3,5000, 100, 1.0,
 4,5000, 100, 1.0,
 5,5000, 100, 1.0,

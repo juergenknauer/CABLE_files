@@ -70,12 +70,6 @@ time_obs <- obs$dim$time$vals
 fracs    <- ncvar_get(sim,varid="patchfrac")
 ntiles   <- length(fracs)
 
-
-# check if time_sim starts at 0 or not
-if (time_sim[1] < 1e-12){
-  warning("simulation time starts at time step 0! Check alignment of observed and simulated time!!")
-}
-
 ## get time information and variables
 dmy_sim  <- sec.to.dmy(time_sim,startyear,endyear)
 vars_sim <- extract.vars(ncfile=sim,varnames=varnames_sim,fracs=fracs)

@@ -26,11 +26,11 @@
   CosmOzSiteFile = "nil"
   OzNetSiteFile = "nil"
   CatchmentFile = "nil"
-  OzFluxSiteFile = "./OzFluxSites_Cumberland.txt"
-  OzFluxRsoSiteFile = "./OzFluxSites_Cumberland.txt"
-  OzFluxSMSiteFile = "./OzFluxSites_Cumberland.txt"
-  LAISiteFile = "./OzFluxSites_Cumberland.txt"
-  OzFluxSMSiteFile = "./OzFluxSites_Cumberland.txt"
+  OzFluxSiteFile = "./OzFluxSites.txt"
+  OzFluxRsoSiteFile = "./OzFluxSites.txt"
+  OzFluxSMSiteFile = "./OzFluxSites.txt"
+  LAISiteFile = "./OzFluxSites.txt"
+  OzFluxSMSiteFile = "./OzFluxSites.txt"
   
 !
 ! Select which observation types will be included in the observation file
@@ -44,12 +44,12 @@
   NEPProcess = 'tan'    ! Temporal anomaly for NEP
   RecSelect = 'com'    ! Rec ecosystem respiration
   OzFluxRes = 'hho'    ! OzFlux obs at half-hourly resolution
-  RsoSelect = 'opt'    ! OzFlux soil respiration
-  RsoProcess = 'tsc'    ! OzFlux soil respiration
-  Rsodm = 'hho'        ! half-hourly soil respiration
+!  RsoSelect = 'opt'    ! OzFlux soil respiration
+!  RsoProcess = 'tsc'    ! OzFlux soil respiration
+!  Rsodm = 'hho'        ! half-hourly soil respiration
   LAISelect = 'com'    ! Leaf Area index
 !  SMOdm = 'day'        ! 'day' or 'mon' for OzNet soil moisture  - check monthly, not implemented yet
-  SMFSelect = 'com'    ! OzFlux soil moisture
-  SMFdm = 'day'        ! 'day' or 'mon' for OzFlux soil moisture  - check monthly, not implemented yet
+!  SMFSelect = 'com'    ! OzFlux soil moisture
+!  SMFdm = 'day'        ! 'day' or 'mon' for OzFlux soil moisture  - check monthly, not implemented yet
 /
 
