@@ -3,6 +3,8 @@ Commands to update and push files to git rep.
 
 git pull
 
-git add .
+git status # tells you what has changed
+
+git add . # or filename
 git commit -m "changed and added Jupyter notebooks"
 git push

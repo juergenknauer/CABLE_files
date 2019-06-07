@@ -8,11 +8,11 @@
 # Global settings:
 #SITE_LIST=OzFLUX_sitelist_v1.txt
 #SITE_LIST=test.txt
-SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
-TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST
-CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux
-OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
-PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
+SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run directory
+TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
+CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
+OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux  # read only
+PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R # read only
 SIM_EXT=CNP_2tiles_out
 RST_EXT=CNP_2tiles
 
