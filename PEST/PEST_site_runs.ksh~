@@ -1,0 +1,241 @@
+#!/bin/ksh
+
+# This script runs PEST at multiple OzFLUX/FLUXNET sites
+# Juergen Knauer, May/June 2019
+# for further details on PEST runs, see CABLE PEST documentation_JK.docx
+# ATTENTION: script only works for parameters + variables as specified in the template files!! It is also assumed that model files are ending with CNP...
+
+# Global settings:
+#SITE_LIST=OzFLUX_sitelist_v1.txt
+#SITE_LIST=test.txt
+SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
+TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST
+CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux
+OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
+PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
+SIM_EXT=CNP_2tiles_out
+RST_EXT=CNP_2tiles
+
+
+## IMPORTANT: run all sites with the right settings in the python meta script! The restart files are taken from these runs!
+## Also ensure that the meta script is run with the right SIM_EXT! 
+
+### no changes needed beyond that point ###
+
+site=Tumbarumba
+
+#for site in $sites; do
+
+    echo starting site $site
+
+    # create working directory if not existing (copy from template directory)
+    WD=${SITE_DIR}/${site}/PEST
+    SIM_NAME=${site}_${SIM_EXT}
+    RST_NAME=${site}_${RST_EXT}
+rm -r $WD # for development only
+    if [ ! -d $WD ]; then   # no previous PEST runs - set up new site
+	mkdir -p $WD
+
+	
+        # 1) create csv observation files if not existing
+        if [[ ! -f ${CSV_DIR}/${site}_Hourly.csv || ! -f ${CSV_DIR}/${site}_HalfHourly.csv ]]; then 
+          ./create_observations_csv.R $site $OBS_DIR $CSV_DIR
+	fi
+
+	if [[ -f ${CSV_DIR}/${site}_Hourly.csv ]]; then   # not super safe, but ok for now
+	  obsres='hou'
+	elif [[ -f ${CSV_DIR}/${site}_HalfHourly.csv ]]; then
+          obsres='hho'
+	fi
+
+	
+
+	# 2) copy files and create links
+	cd $WD
+	cp ${TEMPLATE_DIR}/CompileObservations.nml .
+	cp ${TEMPLATE_DIR}/CompileObservations.exe .
+	cp ${TEMPLATE_DIR}/CompileObservations.f90 .
+	cp ${TEMPLATE_DIR}/OzFluxSites.txt .
+	cp ${TEMPLATE_DIR}/run_cable_casa_inpest.sh .
+	cp $(dirname $TEMPLATE_DIR)/run_cable_site_CNP_meta.py .
+	cp ${TEMPLATE_DIR}/reset_restart_pest.bash .
+	cp ${TEMPLATE_DIR}/ExtractObservables/ExtractObservables.nml .
+	cp ${TEMPLATE_DIR}/ExtractObservables/ExtractObservables.exe .
+	cp ${TEMPLATE_DIR}/ppestjob_Cumb.slurm ppestjob_${site}.slurm
+
+	# if parameters to optimize change, modify the following files:
+	cp ${TEMPLATE_DIR}/p2p_template.tpl p2p_${site}.tpl
+	cp ${TEMPLATE_DIR}/pars.tpl .
+	cp ${TEMPLATE_DIR}/Cumberland_pftlookup.tpl ${site}_pftlookup.tpl
+	cp ${TEMPLATE_DIR}/Cumberland_veg_params.tpl ${site}_veg_params.tpl
+
+	# if parameters to optimize and/or variables change, modify:
+	cp ${TEMPLATE_DIR}/PEST_control.pst PEST_${site}_pre.pst
+
+
+	
+        # 3) set correct directories in CompileObservations.nml and create site-specific site file
+        sed -i "s!^  FILE_NAME.*!  FILE_NAME = \"${SITE_DIR}\/${site}\/outputs\/${SIM_NAME}_cable.nc\"!" CompileObservations.nml
+        sed -i "s!^  POPfile.*!  POPfile = \"${SITE_DIR}\/${site}\/restart_files\/${RST_NAME}_pop_rst.nc\"!" CompileObservations.nml
+        sed -i "s!OzFluxSites.txt!OzFluxSites_${site}.txt!" CompileObservations.nml
+        if [[ $obsres -eq 'hou' ]]; then
+	  echo TRUEEE
+	  sed -i "s! OzFluxRes = 'hho'! OzFluxRes = 'hou'!" CompileObservations.nml
+	fi
+
+	## create site-specific sitelist file
+	sed -n "2p" OzFluxSites.txt > OzFluxSites_${site}.txt
+	sed -i "1i1" OzFluxSites_${site}.txt
+	sed -n "/$site/p" OzFluxSites.txt >> OzFluxSites_${site}.txt
+        
+	./CompileObservations.exe
+
+	
+
+	# 4) copy Obs4pst.txt to the PEST control (pst) file
+	line=$(grep -n '* observation data' PEST_${site}_pre.pst | cut -d ":" -f 1)
+	line=$(echo "$line + 1" | bc)
+
+	sed -n "$line,$ p" PEST_${site}_pre.pst > cuts.txt
+	sed -i "$line,$ d" PEST_${site}_pre.pst
+	sed "1d" Obs4pst.txt >> PEST_${site}_pre.pst       
+        cat cuts.txt >> PEST_${site}_pre.pst; rm cuts.txt
+	nobs=$(echo "$(sed -n "1p" Obs4pst.txt | cut -f 1)" | sed -e "s!^[ \t]*!!")
+	
+	  #test=$(sed "1d" Obs4pst.txt)  # would be nice, but doesn't work ('too many arguments')
+          #sed -i "$line a $test" PEST_${site}_pre.pst
+
+	
+	# 5) adjust paths in PEST control (pst) file
+        sed -i "s!.*run_cable_casa_inpest.sh!${WD}/run_cable_casa_inpest.sh!" PEST_${site}_pre.pst
+	sed -i "s!.*p2p.dat!${WD}/p2p_${site}.tpl p2p.dat!" PEST_${site}_pre.pst
+	sed -i "s!.*Observables.txt!${WD}/PEST_${site}.ins Observables.txt!" PEST_${site}_pre.pst
+
+	
+	# 6) write right number of observations to pst file and set noptmax to 0
+	nobs_tmpl=$(awk 'NR==4{print $2}' PEST_${site}_pre.pst)
+	sed -i "4s/$nobs_tmpl/$nobs/" PEST_${site}_pre.pst
+
+
+	# 7) rename Obs.ins and remove indentation
+        mv Obs.ins PEST_${site}.ins
+	sed -i '1s/^ *//' PEST_${site}.ins
+        
+
+        # 8) uncomment 'PEST lines' in python script and get some information from cable.nml
+	line=$(grep -n 'special for PEST' run_cable_site_CNP_meta.py | cut -d ":" -f 1)
+	sed -i "$(echo "$line + 1" | bc),$(echo "$line + 3" | bc)s/#//" run_cable_site_CNP_meta.py
+	sed -i "$ s!C.main(.*!C.main(SPIN_UP=False, TRANSIENT=False, SIMULATION=True)!" run_cable_site_CNP_meta.py
+
+	sed -i "/os.chdir(site_dir + '\/' + site)/d" run_cable_site_CNP_meta.py
+        sed -i "/print(\"Plotting\")/d" run_cable_site_CNP_meta.py  # don't plot in PEST runs
+        sed -i "/subprocess.call/d" run_cable_site_CNP_meta.py 
+
+	
+	startyear=$(grep 'cable_user%YearStart' ../cable.nml | cut -d "=" -f 2)
+	endyear=$(grep 'cable_user%YearEnd' ../cable.nml | cut -d "=" -f 2)
+        LAI_feedback=$(grep 'l_laiFeedbk' ../cable.nml | cut -d "." -f 2) 
+		    
+
+	
+	# 9) adjust paths in run_cable_casa_inpest.sh!
+        sed -i "s!^bdir=.*!bdir=$(dirname ${WD})!" run_cable_casa_inpest.sh
+	sed -i "s!^wdir=.*!wdir=${WD}!" run_cable_casa_inpest.sh
+	#sed -i "s!.*reset_restart_pest.bash!./reset_restart_pest.bash!" run_cable_casa_inpest.sh
+	#sed -i "/^cp \$wdir\/ObsSpecs.txt/ d" run_cable_casa_inpest.sh
+        #sed -i "/^cp \$wdir\/ExtractObservables.nml/ d" run_cable_casa_inpest.sh
+	#sed -i "s!^\$wdir\/ExtractObservables.exe.*!./ExtractObservables.exe > logs/ExtractObservablesLog.txt!" run_cable_casa_inpest.sh
+	sed -i "s!\$wdir\/run_cable_site_CNP.*!\$wdir\/run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback \
+                $SITE_DIR $OBS_DIR $PLOT_DIR!" run_cable_casa_inpest.sh
+	
+
+	
+        # 10) adjust reset_restart_pest.bash
+	sed -i "s!^wdir=.*!wdir=$(dirname ${WD})!" reset_restart_pest.bash
+	sed -i "6,12s!CumberlandPlain_CNP!${RST_NAME}!g" reset_restart_pest.bash  # g for global replaces all occurrences in a line
+
+	
+	# 11) adjust paths in ExtractObservables.nml
+        sed -i "s!CumberlandPlain_CNP_out!${SIM_NAME}!" ExtractObservables.nml
+	
+	
+	# 12) adjust paths and names in p2p_${site}.tpl file
+	sed -i "s!.*def_veg_params_pest.txt! ${WD}/${site}_veg_params.tpl veg_params_pest.txt!" p2p_${site}.tpl
+        sed -i "s!.*pftlookup_pest.csv! ${WD}/${site}_pftlookup.tpl pftlookup_pest.csv!" p2p_${site}.tpl
+        sed -i "s!.*pars.par! ${WD}/pars.tpl pars.par!" p2p_${site}.tpl
+	
+
+	# 13) check PEST input files (step 9 in word file)
+	pestchek PEST_${site}_pre 
+
+	
+	# 14) make first PEST run with noptmax set to 0 (in pst)
+	# awk 'NR==9{$1=0} {print}' PEST_${site}_pre.pst > PEST_${site}_pre_new.pst; mv PEST_${site}_pre_new.pst PEST_${site}_pre.pst
+        pest PEST_${site}_pre
+	
+
+        # 15) adjust weights (?)
+	nres=$(grep 'Number of residuals with non-zero weight' PEST_${site}_pre.rec | cut -d "=" -f2 | head -1)
+     echo nres: $nres  # nobs in the word file
+	nobsgp=$(awk 'NR==4{print $5}' PEST_${site}_pre.pst)
+     echo nobsgp: $nobsgp
+     echo all: $(echo "$nres / $nobsgp" | bc)
+	pwtadj1 PEST_${site}_pre.pst PEST_${site}.pst $(echo "$nres / $nobsgp" | bc) 
+
+
+        # 16) run pest (with pst file from previous step) with noptmax set to 0 to generate prior Observables.txt
+        awk 'NR==9{$1=0} {print}' PEST_${site}.pst > PEST_${site}_new.pst; mv PEST_${site}_new.pst PEST_${site}.pst 
+	pest PEST_${site}
+	cp Observables.txt Observables_prior.txt
+        
+	
+	# 17) make tmp directory for parallel PEST runs
+	mkdir -p tmp/PEST/PEST1
+
+	
+	# 18) run parallel PEST
+	# set noptmax to the default value
+	awk 'NR==9{$1=30} {print}' PEST_${site}.pst > PEST_${site}_new.pst; mv PEST_${site}_new.pst PEST_${site}.pst 
+
+	# modify the slurm script
+	npars=8
+	nnodes=$(echo "$npars + 1" | bc)
+	sed -i "s!--job-name=.*!--job-name=\"PEST_${site}\"!" ppestjob_${site}.slurm
+	sed -i "s!--nodes=.*!--nodes=$nnodes!" ppestjob_${site}.slurm
+	sed -i "s!--error=.*!--error=PEST_${site}.err!" ppestjob_${site}.slurm
+	sed -i "s!--output=.*!--output=PEST_${site}.out!" ppestjob_${site}.slurm
+	sed -i "s!WD=.*!WD=${WD}!" ppestjob_${site}.slurm
+	sed -i "s!rm -rf.*!rm -rf ${WD}\/tmp\/PEST\/PEST1\/CABLE*!" ppestjob_${site}.slurm
+	sed -i "s!mpirun -np.*!mpirun -np $nnodes ppest ${WD}\/PEST_${site} \/m ${WD}\/tmp\/PEST/\PEST1/\CABLE > log_PEST_${site}!" ppestjob_${site}.slurm
+	
+	sbatch --wait ppestjob_${site}.slurm
+
+
+	# 19) copy final parameter values to parameter files
+	tempchek ${site}_pftlookup.tpl pftlookup_pest.csv PEST_${site}.par
+        tempchek ${site}_veg_params.tpl veg_params_pest.txt PEST_${site}.par
+
+
+	# 20) run PEST one last time with the updated parameter values
+        ./reset_restart_pest.bash
+	./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback $SITE_DIR $OBS_DIR $PLOT_DIR
+
+	
+        # next step: find Observables.txt for use in .ipynb analysis    
+
+    fi
+
+
+    #cd $BASE_DIR
+    
+    ## extract start- and endyear from sitelist (alternative: from metfile)
+    #startyear=`awk -v site=${site} '$0~site {print $2}' $SITE_LIST`
+    #endyear=`awk -v site=${site} '$0~site {print $3}' $SITE_LIST`
+
+    ## run on terminal:
+    # python run_cable_site_CNP_meta.py $site $startyear $endyear
+
+        
+#done
+
+

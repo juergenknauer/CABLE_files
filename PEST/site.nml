@@ -1,0 +1,9 @@
+&siteNML
+	RunType = "historical"
+	CO2NDepFile = 'met/AmaFACE_co2npdepforcing_1850_2100_AMB.csv'
+	spinstartyear = 2013
+	spinendyear = 2017
+	spinCO2 = 284.7
+	spinNdep = 0.79
+        spinPdep = 0.144
+&end

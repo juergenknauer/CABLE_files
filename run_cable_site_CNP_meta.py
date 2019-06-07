@@ -28,11 +28,12 @@ import tempfile
 import pandas as pd
 import xarray as xr
 import numpy as np
+import subprocess
 
 class RunCable(object):
 
     def __init__(self, experiment_id, startyear, endyear, lai_feedback,
-                 namelist_dir, param_dir, output_dir, restart_dir,
+                 site_dir, obs_dir, plot_dir, namelist_dir, param_dir, output_dir, restart_dir,
                  dump_dir, met_fname, co2_ndep_fname, nml_fn,
                  site_nml_fn,veg_param_fn,log_dir, exe, aux_dir,
                  biogeochem, call_pop, verbose):
@@ -41,6 +42,9 @@ class RunCable(object):
         self.startyear = startyear
         self.endyear = endyear
         self.lai_feedback = lai_feedback
+        self.site_dir = site_dir
+        self.obs_dir = obs_dir
+        self.plot_dir = plot_dir
         self.namelist_dir = namelist_dir
         self.param_dir = param_dir
         self.output_dir = output_dir
@@ -86,7 +90,8 @@ class RunCable(object):
     def main(self, SPIN_UP=False, TRANSIENT=False, SIMULATION=False):
 
         site=experiment_id.split('_')[0]
-        os.chdir(site)
+        os.chdir(site_dir + '/' + site)
+        out_file=site_dir + '/' + site + "/" + output_dir + '/' + experiment_id + '_out_cable.nc'
 
         if not os.path.exists(restart_dir):
             os.makedirs(restart_dir)
@@ -100,7 +105,6 @@ class RunCable(object):
         if not os.path.exists(dump_dir):
             os.makedirs(dump_dir)
         
-
             
         num = 1
         not_in_equilibrium = True
@@ -170,6 +174,10 @@ class RunCable(object):
 
             self.setup_simulation(st_yr, en_yr)
             self.run_me()
+
+            print("Plotting")
+            #subprocess.call(["./CABLE_plots.R", site, str(st_yr), str(en_yr), out_file, self.obs_dir])
+            subprocess.call([os.path.join(self.plot_dir,"CABLE_plots.R"), site, str(st_yr), str(en_yr), out_file, self.obs_dir, self.plot_dir])
 
         self.clean_up(end=True)
 
@@ -606,8 +614,9 @@ class RunCable(object):
             f = "new_sumbal"
             if os.path.isfile(f):
                 os.remove(f)
-            for f in glob.glob("*.out"):
-                os.remove(f)
+            #JK: no longer remove .out files 
+            #for f in glob.glob("*.out"):
+            #    os.remove(f)
             for f in glob.glob("restart_*.nc"):
                 os.remove(f)
         else:
@@ -668,6 +677,9 @@ if __name__ == "__main__":
     startyear=int(sys.argv[2])
     endyear=int(sys.argv[3])
     lai_feedback=sys.argv[4]
+    site_dir=sys.argv[5]
+    obs_dir=sys.argv[6]
+    plot_dir=sys.argv[7]
 
     
     cwd = os.getcwd()
@@ -692,7 +704,7 @@ if __name__ == "__main__":
     exe = "./cable"
 
     # special for PEST
-    #veg_param_fn = "def_veg_params_pest.txt"
+    #veg_param_fn = "veg_params_pest.txt"
     #bgc_param_fn = "pftlookup_pest.csv"
     #param_dir = "./"
 
@@ -707,7 +719,8 @@ if __name__ == "__main__":
 
         # experiment_id = "Cumberland_POP_%s" % (biogeochem)
         experiment_id = site + "_%s_2tiles" % (biogeochem)
-        C = RunCable(experiment_id, startyear, endyear, lai_feedback, namelist_dir,
+        C = RunCable(experiment_id, startyear, endyear, lai_feedback, site_dir,
+                     obs_dir, plot_dir,  namelist_dir,
                      param_dir,output_dir, restart_dir,dump_dir, met_fname, co2_ndep_fname,
                      nml_fn, site_nml_fn,veg_param_fn, log_dir, exe, aux_dir,
                      biogeochem, call_pop,verbose)
