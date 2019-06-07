@@ -1,0 +1,8 @@
+Commands to update and push files to git rep.
+
+
+git pull
+
+git add .
+git commit -m "changed and added Jupyter notebooks"
+git push
