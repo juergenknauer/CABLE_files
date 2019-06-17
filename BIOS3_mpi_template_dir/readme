@@ -1,0 +1,128 @@
+VH May 8, 2019
+
+This readme documents how to do a full CABLE-CASA-POP-LUC run with BIOS met and parameter forcing. bash scripts are in the 'scripts' directory
+
+The code branch is:
+  https://trac.nci.org.au/svn/cable/branches/Share/NESP2pt9_BLAZE/
+
+The executable is generated from
+  https://trac.nci.org.au/svn/cable/branches/Share/NESP2pt9_BLAZE/offline/build.ksh
+or ./build_mpi.ksh for mpi code.
+
+This executable should be copied or linked to the 'exes' directory.
+
+The met, LUH2, forcing and mask were created by extracting the gridcell for Harvard Forest from the global data sets using the script extract_met.bash
+
+The run steps are follows
+
+Steps 1-5 are done with fixed CO2, N deposition with repeated meteorology (BIOS.nml), LU of 1700 (LUC.nml).
+
+1. run_cable_init_0.bash
+This is the first phase of spinup. It runs the full model, with static (eg 1700, set by YearStart in LUC.nml) land-use, and with biomass stocks initialised to zero. This run has a 'cold start', i.e. climate_from_zero, POP_from_zero and casa_from_zero are all set to 'True', and no restart files are required. 'limit_labile' flag set to .TRUE.. This flag turs resets the labile P and mineral N pools to high values to prvent nutrient limitation, allowing biomass stocks to approach equilibrium faster.
+In cable.nml:
+   cable_user%CLIMATE_fromZero = .T.
+   cable_user%POP_fromZero     = .T.
+   cable_user%CASA_fromZero    = .T.
+   cable_user%POPLUC           = .T.
+   cable_user%POPLUC_RunType   = 'static'
+   cable_user%limit_labile     = .T.
+   icycle                      = 3 (2 for CN or 3 for CNP)
+
+3. run_cable_spinup_limit_labile.bash
+Same as above, but this time casa, climate and POP are initialised from restart files.
+In cable.nml:
+   cable_user%CLIMATE_fromZero = .F.
+   cable_user%POP_fromZero     = .F.
+   cable_user%CASA_fromZero    = .F.
+   cable_user%POPLUC           = .T.
+   cable_user%POPLUC_RunType   = 'static'
+   cable_user%limit_labile     = .T.
+   icycle                      = 3
+   cable_user%CASA_DUMP_READ   = .F.
+   cable_user%CASA_DUMP_WRITE  = .T.
+
+4. run_cable_spin_casa_limit_labile.bash
+This uses dump files from step(3) to run casa in isolation from the cable biophysics. Soil and litter pools are brought to quasi-equilibrium using an analytic steady-state solution. Further iterations of casa-POP are performed to bring the biomass closer to equilibrium.
+In cable.nml:
+   cable_user%CLIMATE_fromZero = .F.
+   cable_user%POP_fromZero     = .F.
+   cable_user%CASA_fromZero    = .F.
+   cable_user%POPLUC           = .T.
+   cable_user%POPLUC_RunType   = 'static'
+   cable_user%limit_labile     = .T.
+   spincasa                    = .T. ! .t. only for analytic spin cycle
+   icycle                      = 12
+   cable_user%CASA_DUMP_READ   = .T.
+   cable_user%CASA_DUMP_WRITE  = .F.
+
+5. Repeat pairs of run_cable_spinup_limit_labile.bash and run_cable_spin_casa_limit_labile.bash (steps 3 and 4, several times).
+
+6. Repeated sequence of run_cable_spinup.bash and run_cable_spin_casa.bash (same as 3-5 above, but this time labile P and mineral N pools  are not restricted).
+In cable.nml:
+   cable_user%limit_labile = .F.
+
+7. Full cable run from 1860 to 1899: run_cable_1860_1899.bash
+Uses recycled met, but dynamic Ndep and CO2
+
+8. Full cable run from 1900 to 1989: run_cable_1900_1989.bash
+Actual met this time
+
+9. Full cable run from 1990 to 2017: run_cable_1990_2017.bash
+Actual met this time
+
+10. To re-estimate stocks after changes to biogeochemical params:
+run_cable_spin_casa.bash
+run_casa_only_1860_1989.bash
+run_casa_only_1990_2017.bash
+
+These runs run casa only,  using dump files in current run directory. To specify alternate dump file location, be sure to set casafile%c2cdumppath accordingly.
+
+
+
+
+
+For mpi run:
+replace
+./cable >& $logfile
+by
+mpirun -np 28 ./cable-mpi >& $logfile
+
+
+
+# Steps to do
+mkdir run_20190502
+cd run_20190502
+ln -s {full path to CABLE executable}
+ln -s {full path to CABLE-AUX 
+ln -s ../driver_files
+mkdir outputs restart logs
+
+change domain name in all bios.nml templates in the dirver files dir:
+cd driver_files
+templatename=CasaObs
+domname=howard_springs
+sed -i "s/${templatename}/${domname}/g" bios.nml*
+(NB you need double quotes above to make the shell expand the variables)
+
+for mpi run, in all bash scripts:
+
+sed -i 's?./cable ?#./cable?g' *.bash
+
+sed -i 's?#mpirun -np 20?mpirun -np 20?g' *.bash
+
+to comment out entries in bios.nml files that are not used in NESP2pt9 branch:
+sed -i 's/vegtypeigbp_file/!vegtypeigbp_file/g' bios.nml*
+sed -i 's/avgannmax_fapar_file/!avgannmax_fapar_file/g' bios.nml*
+
+
+to switch between soil C turnover params
+
+sed -i "s/cable_user%SMRF_NAME = 'DAMM'/cable_user%SMRF_NAME = 'Trudinger2016'/g" cable.nml*
+sed -i "s/cable_user%STRF_NAME = 'DAMM'/cable_user%STRF_NAME = 'Q10'/g" cable.nml*
+
+
+To update to 2018 met
+sed -i 's/1900010120171231/1900010120181231/g' bios.nml*
+sed -i 's/b1807/b1904/g' bios.nml*
+sed -i 's/b1801/b1904/g' bios.nml*
+sed -i 's/1750_2017/1750_2018/g' bios.nml*

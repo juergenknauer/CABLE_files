@@ -58,14 +58,13 @@ def read_cable_single_site_patch(fname, verb=False):
                 f.variables[var].dimensions[1] == 'soil' and 
                 f.variables[var].dimensions[2] == 'patch' and 
                 f.variables[var].dimensions[3] == 'land') :
-                df['SoilTempWeighted'] =  np.repeat(0.0,f.variables['time'].size)
-                df['SoilTemp1'] =  np.repeat(0.0,f.variables['time'].size)
+                   
                 for j in range(np.array(f.variables[var].shape)[2]): # patches
                     for i in range(np.array(f.variables[var].shape)[1]): # soil layers        
                         if var =='SoilTemp':
-                             df['SoilTemp_%1i' %(i+1) + '_%1i_' %(j+1)] = f.variables[var][:,i,j,0]-273.15
+                             df['SoilTemp_%1i' %(i+1) + '_%1i' %(j+1)] = f.variables[var][:,i,j,0]-273.15
                         if var =='SoilMoist':
-                             df['SoilMoisr_%1i' %(i+1) + '_%1i_' %(j+1)] = f.variables[var][:,i,j,0]
+                             df['SoilMoist_%1i' %(i+1) + '_%1i' %(j+1)] = f.variables[var][:,i,j,0]
                     if var =='SoilTemp':
                             df['SoilTempWeighted_%1i' %(j+1)]  =  np.sum(f.variables['froot'][:,j,0] * \
                                                                   f.variables[var][:,:,j,0], axis = 1)  -273.15
@@ -73,10 +72,19 @@ def read_cable_single_site_patch(fname, verb=False):
                                 df['SoilMoistWeighted_%1i' %(j+1)]  =  np.sum(f.variables['froot'][:,j,0] * \
                                                           f.variables[var][:,:,j,0], axis = 1)
                     if var =='SoilTemp':
+                        df['SoilTempWeighted'] =  np.repeat(0.0,f.variables['time'].size)
+                        df['SoilTemp1'] =  np.repeat(0.0,f.variables['time'].size)
                         df['SoilTempWeighted'] = df['SoilTempWeighted'] +  df['patchfrac' + '_' + "%1i" %(j+1)] * \
                                                  df['SoilTempWeighted_%1i' %(j+1)]
                         df['SoilTemp1'] = df['SoilTemp1'] +  df['patchfrac' + '_' + "%1i" %(j+1)] * \
-                                                 df['SoilTemp_1' + '_%1i_' %(j+1)]
+                                                 df['SoilTemp_1' + '_%1i' %(j+1)]
+                    if var =='SoilMoist':
+                        df['SoilMoistWeighted'] =  np.repeat(0.0,f.variables['time'].size)
+                        df['SoilMoist1'] =  np.repeat(0.0,f.variables['time'].size)
+                        df['SoilMoistWeighted'] = df['SoilMoistWeighted'] +  df['patchfrac' + '_' + "%1i" %(j+1)] * \
+                                                 df['SoilMoistWeighted_%1i' %(j+1)]
+                        df['SoilMoist1'] = df['SoilMoist1'] +  df['patchfrac' + '_' + "%1i" %(j+1)] * \
+                                                 df['SoilMoist_1' + '_%1i' %(j+1)] 
                                 
                                 
                 

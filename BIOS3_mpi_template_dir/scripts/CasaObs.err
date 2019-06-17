@@ -1,0 +1,166 @@
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.from_zero': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_init_0.bash: line 11: logs/log_zero: No such file or directory
+../scripts/run_cable_init_0.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_init_0.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spinup_limit_labile': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 11: logs/log_spinup_limit_labile: No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spin_casa_limit_labile': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 11: logs/log_spin_casa: No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 14: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spinup_limit_labile': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 11: logs/log_spinup_limit_labile: No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spin_casa_limit_labile': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 11: logs/log_spin_casa: No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 14: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spinup_limit_labile': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 11: logs/log_spinup_limit_labile: No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_spinup_limit_labile.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spin_casa_limit_labile': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 11: logs/log_spin_casa: No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 14: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+../scripts/run_cable_spin_casa_limit_labile.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spinup.bash: line 11: logs/log_spinup: No such file or directory
+../scripts/run_cable_spinup.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_spinup.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spin_casa': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spin_casa.bash: line 11: logs/log_spin_casa: No such file or directory
+../scripts/run_cable_spin_casa.bash: line 14: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+../scripts/run_cable_spin_casa.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spinup.bash: line 11: logs/log_spinup: No such file or directory
+../scripts/run_cable_spinup.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_spinup.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spin_casa': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spin_casa.bash: line 11: logs/log_spin_casa: No such file or directory
+../scripts/run_cable_spin_casa.bash: line 14: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+../scripts/run_cable_spin_casa.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.spinup': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_spinup.bash: line 11: logs/log_spinup: No such file or directory
+../scripts/run_cable_spinup.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_spinup.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.premet': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.1860_1899': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_1860_1899.bash: line 12: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_1860_1899.bash: line 18: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.standard': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.1900_1989': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_1900_1989.bash: line 11: logs/log_1900_1989: No such file or directory
+../scripts/run_cable_1900_1989.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_1900_1989.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+cp: cannot stat 'driver_files/bios.nml.standard': No such file or directory
+cp: cannot stat 'driver_files/cable.nml.1990_2017': No such file or directory
+cp: cannot stat 'driver_files/LUC.nml': No such file or directory
+../scripts/run_cable_1990_2017.bash: line 11: logs/log_1990_2017: No such file or directory
+../scripts/run_cable_1990_2017.bash: line 11: ./cable: No such file or directory
+../scripts/run_cable_1990_2017.bash: line 13: cd: restart: No such file or directory
+cp: cannot stat 'pop_bios_ini.nc': No such file or directory
+cp: cannot stat 'bios_climate_rst.nc': No such file or directory
+cp: cannot stat 'bios_casa_rst.nc': No such file or directory
+cp: cannot stat 'bios_cable_rst.nc': No such file or directory
+../scripts/run_cable_1990_2017.bash: line 19: cd: ../outputs: No such file or directory
+mv: cannot stat 'bios_out_cable.nc': No such file or directory
+mv: cannot stat 'bios_out_casa.nc': No such file or directory
+mv: cannot stat 'bios_out_POP.nc': No such file or directory

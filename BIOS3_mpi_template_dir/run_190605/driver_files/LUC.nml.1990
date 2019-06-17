@@ -1,0 +1,11 @@
+&LUCNML
+
+	TransitionFilePath ="/OSM/CBR/OA_GLOBALCABLE/work/LUH2/v3h/0.05deg_aust/EXTRACT"	
+        ClimateFile ="/data/tru034/LUH2/climate_from_cable/nesp27catch16/climate_rst_bios.nc"		
+	Run          = "static"
+	DirectRead   = .FALSE.
+	YearStart    = 1990
+        YearEnd      = 2014	     
+        NotPrimOnlyFile = "none"
+
+&end
