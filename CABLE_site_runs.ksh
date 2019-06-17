@@ -6,8 +6,9 @@
 
 # Global settings:
 SITE_LIST=OzFLUX_sitelist_v1.txt
-#SITE_LIST=test.txt
+SITE_LIST=Cumb.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
+AUX_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/CABLE-AUX
 LOG_DIR=${SITE_DIR}/logs
 CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP_OzFLUX
 FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
@@ -57,7 +58,7 @@ for site in $sites; do
 	cp -r ${BASE_DIR}/namelists .
 	chmod -R 755 *  # permissions
 	ln -s $FORCING_DIR met
-	ln -s /data/hav014/CABLE-AUX  # to be generalized...
+	ln -s $AUX_DIR
       
     fi
 

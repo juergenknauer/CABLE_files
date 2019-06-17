@@ -347,6 +347,7 @@ class RunCable(object):
                         "cable_user%CASA_SPIN_ENDYEAR": "%d" % (en_yr_spin),
                         "cable_user%CALL_POP": "%s" % (self.pop_flag),
                         "output%averaging": "'monthly'",
+                        "output%patch": ".TRUE.",
                         "icycle": "%d" % (self.biogeochem),
                         "leaps": ".TRUE.",
                         "l_vcmaxFeedbk": "%s" % (self.vcmax_feedback),
