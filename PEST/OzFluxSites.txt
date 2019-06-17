@@ -5,7 +5,7 @@ sitecode,sitename,startmm,startyy,endmm,endyy,lat,lon,patch
 "Cpr","Calperum",1,2011,12,2017,-34.00206,140.58912,"2"
 "Cpt","CapeTribulation",1,2010,12,2017,-16.103219,145.446922,"2"
 "Cow","CowBay",1,2009,12,2017,-16.238189,145.42715,"2"
-"Cum","CumberlandPlain",1,2013,12,2017,-33.615278,150.723611,"2"
+"Cum","CumberlandPlain",1,2013,12,2017,-33.615278,150.723611,"1"
 "Dap","DalyPasture",1,2008,12,2012,-17.1507,133.3502,"2"
 "Dau","DalyUncleared",1,2008,12,2017,-14.1592,131.3881,"2"
 "Dry","DryRiver",1,2009,12,2017,-15.2588,132.3706,"2"

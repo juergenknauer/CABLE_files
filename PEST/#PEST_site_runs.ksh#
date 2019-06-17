@@ -13,10 +13,10 @@ TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST
 CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
 PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
-SIM_EXT=CNP_2tiles_out
-RST_EXT=CNP_2tiles
-#SIM_EXT=CNP_out
-#RST_EXT=CNP
+#SIM_EXT=CNP_2tiles_out
+#RST_EXT=CNP_2tiles
+SIM_EXT=CNP_out
+RST_EXT=CNP
 
 
 ## IMPORTANT: run all sites with the right settings in the python meta script! The restart files are taken from these runs!
@@ -141,7 +141,7 @@ rm -r $WD # for development only
     sed -i "/print(\"Plotting\")/d" run_cable_site_CNP_meta.py  # don't plot in PEST runs
     sed -i "/subprocess.call/d" run_cable_site_CNP_meta.py 
 
-    sed -i "s!\"output%patch\": \".TRUE.\"!\"output%patch\": \".FALSE.\"!" run_cable_site_CNP_meta.py
+    #sed -i "s!\"output%patch\": \".TRUE.\"!\"output%patch\": \".FALSE.\"!" run_cable_site_CNP_meta.py
     
     startyear=$(grep 'cable_user%YearStart' ../cable.nml | cut -d "=" -f 2)
     endyear=$(grep 'cable_user%YearEnd' ../cable.nml | cut -d "=" -f 2)
