@@ -6,8 +6,8 @@
 # ATTENTION: script only works for parameters + variables as specified in the template files!! It is also assumed that model files are ending with CNP...
 
 # Global settings:
-#SITE_LIST=OzFLUX_sitelist_v1.txt
-#SITE_LIST=test.txt
+#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/OzFLUX_sitelist_v1.txt
+SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/Cumb.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run directory
 TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
 CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
@@ -19,18 +19,22 @@ RST_EXT=CNP_2tiles
 #RST_EXT=CNP
 
 
-## IMPORTANT: run all sites with the right settings in the python meta script! The restart files are taken from these runs!
-## Also ensure that the meta script is run with the right SIM_EXT! 
-
 ### no changes needed beyond that point ###
 
-#site=Tumbarumba
-site=CumberlandPlain
+sites=$(cut -f 1 $SITE_LIST)
 
-#for site in $sites; do
+#site=Tumbarumba
+#site=CumberlandPlain
+ind=1 # starting at 1 instead of 0 is deliberate
+
+for site in $sites; do
 
     echo starting site $site
+    let "ind=$ind+1"
 
+    forest_fract=$(sed -n "$ind p" $SITE_LIST | cut -f 10)
+    C4_fract=$(sed -n "$ind p" $SITE_LIST | cut -f 12)
+   
     # create working directory if not existing (copy from template directory)
     WD=${SITE_DIR}/${site}/PEST
     SIM_NAME=${site}_${SIM_EXT}
@@ -74,10 +78,20 @@ rm -r $WD # for development only
     cp ${TEMPLATE_DIR}/ppestjob_Cumb.slurm ppestjob_${site}.slurm
 
     # if parameters to optimize change, modify the following files:
-    cp ${TEMPLATE_DIR}/p2p_template.tpl p2p_${site}.tpl
-    cp ${TEMPLATE_DIR}/pars.tpl .
-    cp ${TEMPLATE_DIR}/Cumberland_pftlookup.tpl ${site}_pftlookup.tpl
-    cp ${TEMPLATE_DIR}/Cumberland_veg_params.tpl ${site}_veg_params.tpl
+    if [[ $forest_fract -ge 0.5 ]]; then
+      param_folder=ebf
+    else
+      if [[ $C4_fract -lt 0.5 ]]; then
+        param_folder=c3g
+      else
+        param_folder=c4g
+      fi
+    fi
+    
+    cp ${TEMPLATE_DIR}/params/${param_folder}/p2p_template.tpl p2p_${site}.tpl
+    cp ${TEMPLATE_DIR}/params/${param_folder}/pars.tpl .
+    cp ${TEMPLATE_DIR}/params/${param_folder}/Cumberland_pftlookup.tpl ${site}_pftlookup.tpl
+    cp ${TEMPLATE_DIR}/params/${param_folder}/Cumberland_veg_params.tpl ${site}_veg_params.tpl
 
     # if parameters to optimize and/or variables change, modify:
     cp ${TEMPLATE_DIR}/PEST_control.pst PEST_${site}_pre.pst
@@ -238,6 +252,6 @@ rm -r $WD # for development only
     fi
 
         
-#done  # end site loop
+done  # end site loop
 
 
