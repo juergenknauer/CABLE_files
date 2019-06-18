@@ -6,7 +6,7 @@
 
 # Global settings:
 SITE_LIST=OzFLUX_sitelist_v1.txt
-SITE_LIST=Cumb.txt
+#SITE_LIST=Cumb.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 AUX_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/CABLE-AUX
 LOG_DIR=${SITE_DIR}/logs

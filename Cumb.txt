@@ -1,2 +1,0 @@
-	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation
-CumberlandPlain	2013	2017	-33.615278	150.723611	23.0	30.0	Dry sclerophyll forest
