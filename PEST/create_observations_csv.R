@@ -24,15 +24,15 @@ obs <- nc_open(paste0(obs_dir,"/",site,"_L6.nc"))
 
 
 
-GPP  <- round(ncvar_get(obs,varid='GPP_LT'),6)
-NEP  <- round(ncvar_get(obs,varid='NEP_LT'),6)
+GPP  <- round(ncvar_get(obs,varid='GPP_SOLO'),6)
+NEP  <- round(ncvar_get(obs,varid='NEP_SOLO'),6)
 evap <- round(ncvar_get(obs,varid='ET'),6)   # mm
-Reco <- round(ncvar_get(obs,varid='ER_LT'),6)
+Reco <- round(ncvar_get(obs,varid='ER_SOLO'),6)
 
-GPP_QC  <- ncvar_get(obs,varid='GPP_LT_QCFlag')
-NEP_QC  <- ncvar_get(obs,varid='NEP_LT_QCFlag')
+GPP_QC  <- ncvar_get(obs,varid='GPP_SOLO_QCFlag')
+NEP_QC  <- ncvar_get(obs,varid='NEP_SOLO_QCFlag')
 evap_QC <- ncvar_get(obs,varid='ET_QCFlag')
-Reco_QC <- ncvar_get(obs,varid='ER_LT_QCFlag')
+Reco_QC <- ncvar_get(obs,varid='ER_SOLO_QCFlag')
 
 
 # filter variables for QCFlags!

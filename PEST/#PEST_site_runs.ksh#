@@ -1,4 +1,4 @@
-#!/bin/ksh
+ls#!/bin/ksh
 
 # This script runs PEST at multiple OzFLUX/FLUXNET sites
 # Juergen Knauer, May/June 2019
@@ -155,7 +155,7 @@ rm -r $WD # for development only
     sed -i "/print(\"Plotting\")/d" run_cable_site_CNP_meta.py  # don't plot in PEST runs
     sed -i "/subprocess.call/d" run_cable_site_CNP_meta.py 
 
-    #sed -i "s!\"output%patch\": \".TRUE.\"!\"output%patch\": \".FALSE.\"!" run_cable_site_CNP_meta.py
+    sed -i "s!\"output%patch\": \".TRUE.\"!\"output%patch\": \".FALSE.\"!" run_cable_site_CNP_meta.py
     
     startyear=$(grep 'cable_user%YearStart' ../cable.nml | cut -d "=" -f 2)
     endyear=$(grep 'cable_user%YearEnd' ../cable.nml | cut -d "=" -f 2)

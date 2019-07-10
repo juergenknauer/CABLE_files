@@ -1,0 +1,5 @@
+	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation	NVIS5_Group	forest_fraction	grass_fraction	C4_fraction
+AdelaideRiver	2008	2008	-13.0769	131.1178	16.0	21.0	Woody Savanna	12	0.378	0.622	1.0
+CowBay	2010	2017	-16.238189000000002	145.42715	26.0	35.0	lowland complex mesophyll vine forest	1	0.792	0.208	0.88
+CumberlandPlain	2013	2018	-33.615278	150.723611	23.0	30.0	Dry sclerophyll forest	25	0.724	0.276	0.64
+

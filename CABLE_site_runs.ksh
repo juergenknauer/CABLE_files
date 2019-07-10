@@ -10,7 +10,7 @@ SITE_LIST=OzFLUX_sitelist_v1.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 AUX_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/CABLE-AUX
 LOG_DIR=${SITE_DIR}/logs
-CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP_OzFLUX
+CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP2pt9_BLAZE
 FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
 PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
@@ -46,23 +46,27 @@ for site in $sites; do
     WD=${SITE_DIR}/${site}
     if [ ! -d $WD ]; then
 	mkdir $WD
-
         cd $WD
 
-	# copy files and create links
-	ln -s ${CODE_DIR}/offline/cable cable
-	cp ${BASE_DIR}/reset_restart.bash .
-        cp ${BASE_DIR}/run_cable_site_CNP.py .
-	cp ${BASE_DIR}/run_cable_site_CNP_meta.py .
-	cp -r ${BASE_DIR}/params .
-	cp -r ${BASE_DIR}/namelists .
-	chmod -R 755 *  # permissions
+	# create links
 	ln -s $FORCING_DIR met
 	ln -s $AUX_DIR
-      
+	chmod -R 755 *  # permissions
     fi
 
+    cd $WD
 
+    cp -r ${BASE_DIR}/params .
+    cp -r ${BASE_DIR}/namelists .
+    rm cable
+    ln -s ${CODE_DIR}/offline/cable cable
+    chmod 775 cable
+    cp ${BASE_DIR}/reset_restart.bash .
+    cp ${BASE_DIR}/run_cable_site_CNP.py .
+    cp ${BASE_DIR}/run_cable_site_CNP_meta.py .
+
+
+    
     cd $BASE_DIR
     
     ## extract start- and endyear from sitelist (alternative: from metfile)
