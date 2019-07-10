@@ -7,7 +7,7 @@
 
 # Global settings:
 #SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/OzFLUX_sitelist_v1.txt
-SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/Cumb.txt
+SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/test_sites.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run directory
 TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
 CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
@@ -87,6 +87,7 @@ rm -r $WD # for development only
         param_folder=c4g
       fi
     fi
+echo $param_folder
     
     cp ${TEMPLATE_DIR}/params/${param_folder}/p2p_template.tpl p2p_${site}.tpl
     cp ${TEMPLATE_DIR}/params/${param_folder}/pars.tpl .
@@ -94,7 +95,7 @@ rm -r $WD # for development only
     cp ${TEMPLATE_DIR}/params/${param_folder}/Cumberland_veg_params.tpl ${site}_veg_params.tpl
 
     # if parameters to optimize and/or variables change, modify:
-    cp ${TEMPLATE_DIR}/PEST_control.pst PEST_${site}_pre.pst
+    cp ${TEMPLATE_DIR}/PEST_control_${param_folder}.pst PEST_${site}_pre.pst
 
 
 	
