@@ -6,13 +6,13 @@
 # ATTENTION: script only works for parameters + variables as specified in the template files!! It is also assumed that model files are ending with CNP...
 
 # Global settings:
-#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/OzFLUX_sitelist_v1.txt
-SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/test_sites.txt
+#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/OzFLUX_sitelist_v1.txt
+SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/test_sites.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run directory
-TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
+#TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
 CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux  # read only
-PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R # read only
+PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/plots_R # read only
 SIM_EXT=CNP_2tiles_out
 RST_EXT=CNP_2tiles
 #SIM_EXT=CNP_out
@@ -20,7 +20,7 @@ RST_EXT=CNP_2tiles
 
 
 ### no changes needed beyond that point ###
-
+TEMPLATE_DIR=$PWD
 sites=$(cut -f 1 $SITE_LIST)
 
 #site=Tumbarumba
@@ -36,6 +36,7 @@ for site in $sites; do
     C4_fract=$(sed -n "$ind p" $SITE_LIST | cut -f 12)
    
     # create working directory if not existing (copy from template directory)
+    cd $TEMPLATE_DIR
     WD=${SITE_DIR}/${site}/PEST
     SIM_NAME=${site}_${SIM_EXT}
     RST_NAME=${site}_${RST_EXT}
@@ -87,7 +88,7 @@ rm -r $WD # for development only
         param_folder=c4g
       fi
     fi
-echo $param_folder
+    echo PFT is $param_folder
     
     cp ${TEMPLATE_DIR}/params/${param_folder}/p2p_template.tpl p2p_${site}.tpl
     cp ${TEMPLATE_DIR}/params/${param_folder}/pars.tpl .

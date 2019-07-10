@@ -6,16 +6,18 @@
 
 # Global settings:
 SITE_LIST=OzFLUX_sitelist_v1.txt
-#SITE_LIST=Cumb.txt
+SITE_LIST=gm_sites.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 AUX_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/CABLE-AUX
 LOG_DIR=${SITE_DIR}/logs
-CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP2pt9_BLAZE
+CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/gm_testing
 FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
-PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/plots_R
+PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/plots_R
 
+EXP_NAME=imp
 LAI_feedback=FALSE
+finite_gm=FALSE
 
 
 
@@ -78,7 +80,7 @@ for site in $sites; do
 
     ## run on cluster (add to .slurm file):
     echo python ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback \
-	 $SITE_DIR $OBS_DIR $PLOT_DIR >> run_cable_casa.slurm
+	 $SITE_DIR $OBS_DIR $PLOT_DIR $finite_gm $EXP_NAME >> run_cable_casa.slurm
         
 done
 
@@ -90,8 +92,10 @@ sbatch --array=1-${nr_sites} --output=${LOG_DIR}/%x_%a.out --error=${LOG_DIR}/%x
 # 1: site name
 # 2: start year
 # 3: end year
-# 4: lai_feedback (TRUE or FALSE)
+# 4: lai_feedback? (TRUE or FALSE)
 # 5: site directory
 # 6: observations (EC data) directory
 # 7: plot directory (location of plotting scripts)
+# 8: finite gm? (TRUE or FALSE)
+# 9: experiment name
 

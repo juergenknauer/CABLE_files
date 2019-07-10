@@ -1,0 +1,4 @@
+	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation	NVIS5_Group	forest_fraction	grass_fraction	C4_fraction
+CumberlandPlain	2013	2018	-33.615278	150.723611	23.0	30.0	Dry sclerophyll forest	25	0.724	0.276	0.64
+Tumbarumba	2002	2017	-35.6566	148.1516	40.0	70.0	wet sclerophyll forest	2	0.898	0.102	0.036
+
