@@ -6,18 +6,19 @@
 # ATTENTION: script only works for parameters + variables as specified in the template files!! It is also assumed that model files are ending with CNP...
 
 # Global settings:
-#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/OzFLUX_sitelist_v1.txt
-SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/test_sites.txt
+SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/OzFLUX_sitelist_v1.txt
+#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/test_sites.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run directory
 #TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
 CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux  # read only
 PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/plots_R # read only
-SIM_EXT=CNP_2tiles_out
-RST_EXT=CNP_2tiles
+SIM_EXT=CNP_2tiles_imp_out
+RST_EXT=CNP_2tiles_imp
 #SIM_EXT=CNP_out
 #RST_EXT=CNP
 
+EXP_NAME=imp
 
 ### no changes needed beyond that point ###
 TEMPLATE_DIR=$PWD
@@ -162,8 +163,8 @@ rm -r $WD # for development only
     startyear=$(grep 'cable_user%YearStart' ../cable.nml | cut -d "=" -f 2)
     endyear=$(grep 'cable_user%YearEnd' ../cable.nml | cut -d "=" -f 2)
     LAI_feedback=$(grep 'l_laiFeedbk' ../cable.nml | cut -d "." -f 2) 
-		    
-
+    finite_gm=$(grep 'cable_user%finite_gm' ../cable.nml | cut -d "." -f 2)		    
+echo !!!!!!!!!!!!!finite_gm = $finite_gm
 	
     # 9) adjust paths in run_cable_casa_inpest.sh!
     sed -i "s!^bdir=.*!bdir=$(dirname ${WD})!" run_cable_casa_inpest.sh
@@ -173,7 +174,7 @@ rm -r $WD # for development only
     #sed -i "/^cp \$wdir\/ExtractObservables.nml/ d" run_cable_casa_inpest.sh
     #sed -i "s!^\$wdir\/ExtractObservables.exe.*!./ExtractObservables.exe > logs/ExtractObservablesLog.txt!" run_cable_casa_inpest.sh
     sed -i "s!\$wdir\/run_cable_site_CNP.*!\$wdir\/run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback \
-              $SITE_DIR $OBS_DIR $PLOT_DIR!" run_cable_casa_inpest.sh
+              $SITE_DIR $OBS_DIR $PLOT_DIR $finite_gm $EXP_NAME!" run_cable_casa_inpest.sh
 	
 
 	
