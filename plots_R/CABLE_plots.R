@@ -14,15 +14,15 @@ library(lubridate)
 # Set command line parameters
 Args <- commandArgs(trailingOnly=TRUE)
 if(length(Args) != 6) {
-  message("CABLE_plots.R requires the following command line arguments: 1) site, 2) startyear, 3) endyear, 4) outfile, 5) obs_dir, 6) plot_dir");quit()
+  message("CABLE_plots.R requires the following command line arguments: 1) experiment_id, 2) startyear, 3) endyear, 4) outfile, 5) obs_dir, 6) plot_dir");quit()
 } 
 
-site      <- as.character(Args[1])
-startyear <- as.numeric(Args[2])
-endyear   <- as.numeric(Args[3])
-outfile   <- as.character(Args[4])
-obs_dir   <- as.character(Args[5])
-plot_dir  <- as.character(Args[6])
+experiment_id  <- as.character(Args[1])
+startyear      <- as.numeric(Args[2])
+endyear        <- as.numeric(Args[3])
+outfile        <- as.character(Args[4])
+obs_dir        <- as.character(Args[5])
+plot_dir       <- as.character(Args[6])
 
 source(paste0(plot_dir,"/CABLE_plots_functions.R"))
 
@@ -30,6 +30,7 @@ source(paste0(plot_dir,"/CABLE_plots_functions.R"))
 #### script assumes that observations are full years!
 ## Settings
 model    <- 'CABLE'  # JSBACH or CABLE
+site     <- strsplit(experiment_id,split="_")[[1]][1]
 obs_type <- unlist(strsplit(obs_dir,"/"))[length(unlist(strsplit(obs_dir,"/")))]
 out_dir  <- dirname(outfile)
 #seasonal <- TRUE     # plot mean diurnal cycle per season (TRUE) or for all months separately?
@@ -110,8 +111,8 @@ dmean_sim_season <- aggregate(vars_sim,by=list(vars_sim[,"hod"],vars_sim[,"seaso
 dmean_obs_season <- aggregate(vars_obs,by=list(vars_obs[,"hod"],vars_obs[,"season"]),mean)[,-c(1,2)]
 
 
-plot.model.obs(dmean_sim_season,dmean_obs_season,filename=paste0(out_dir,"/",site,"_plots_season.pdf"),agg="season")
-plot.model.obs(dmean_sim_month,dmean_obs_month,filename=paste0(out_dir,"/",site,"_plots_month.pdf"),agg="month")
+plot.model.obs(dmean_sim_season,dmean_obs_season,filename=paste0(out_dir,"/",experiment_id,"_plots_season.pdf"),agg="season")
+plot.model.obs(dmean_sim_month,dmean_obs_month,filename=paste0(out_dir,"/",experiment_id,"_plots_month.pdf"),agg="month")
 
 
 cat("plotting successfully finished!")

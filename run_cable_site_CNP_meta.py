@@ -90,10 +90,10 @@ class RunCable(object):
 
     def main(self, SPIN_UP=False, TRANSIENT=False, SIMULATION=False):
 
-        site=experiment_id.split('_')[0]
         os.chdir(site_dir + '/' + site)
         out_file=site_dir + '/' + site + "/" + output_dir + '/' + experiment_id + '_out_cable.nc'
-
+        
+        
         if not os.path.exists(restart_dir):
             os.makedirs(restart_dir)
 
@@ -178,7 +178,7 @@ class RunCable(object):
 
             print("Plotting")
             #subprocess.call(["./CABLE_plots.R", site, str(st_yr), str(en_yr), out_file, self.obs_dir])
-            subprocess.call([os.path.join(self.plot_dir,"CABLE_plots.R"), site, str(st_yr), str(en_yr), out_file, self.obs_dir, self.plot_dir])
+            subprocess.call([os.path.join(self.plot_dir,"CABLE_plots.R"), self.experiment_id, str(st_yr), str(en_yr), out_file, self.obs_dir, self.plot_dir])
 
         self.clean_up(end=True)
 
