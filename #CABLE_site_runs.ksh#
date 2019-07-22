@@ -1,4 +1,4 @@
-#!/bin/ksh
+ls#!/bin/ksh
 
 # This script runs CABLE at multiple OzFLUX/FLUXNET sites
 # Juergen Knauer, February/March 2019

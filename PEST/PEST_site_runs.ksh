@@ -13,12 +13,14 @@ SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run direct
 CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux  # read only
 PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/plots_R # read only
-SIM_EXT=CNP_2tiles_imp_out
-RST_EXT=CNP_2tiles_imp
+
+EXP_NAME=imp  # take this one from somewhere else?
+SIM_EXT=CNP_2tiles_${EXP_NAME}_out
+RST_EXT=CNP_2tiles_${EXP_NAME}
 #SIM_EXT=CNP_out
 #RST_EXT=CNP
 
-EXP_NAME=imp
+
 
 ### no changes needed beyond that point ###
 TEMPLATE_DIR=$PWD
@@ -248,7 +250,8 @@ echo !!!!!!!!!!!!!finite_gm = $finite_gm
 
        # 20) run PEST one last time with the updated parameter values
        ./reset_restart_pest.bash
-       ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback $SITE_DIR $OBS_DIR $PLOT_DIR
+       ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback $SITE_DIR $OBS_DIR \
+				    $PLOT_DIR $finite_gm $EXP_NAME
 	
        # next step: find Observables.txt for use in .ipynb analysis
 

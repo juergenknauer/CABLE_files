@@ -1,5 +1,3 @@
 	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation	NVIS5_Group	forest_fraction	grass_fraction	C4_fraction
-Calperum	2011	2017	-34.00206	140.58912	3.0	20.0	Mallee	14	0.268	0.732	0.621
-Emerald	2012	2013	-23.85872	148.4746	0.0		Mallee and crop	25	0.305	0.695	0.891
-FoggDam	2007	2007	-12.5452	131.3072	0.0	5.0	Ephemeral tropical wetland	21	0.517	0.483	1.0
+SturtPlains	2009	2017	-17.1507	133.3502	0.0		Mitchell Grasslands	19	0.287	0.713	1.0
 
