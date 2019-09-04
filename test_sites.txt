@@ -1,3 +1,0 @@
-	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation	NVIS5_Group	forest_fraction	grass_fraction	C4_fraction
-SturtPlains	2009	2017	-17.1507	133.3502	0.0		Mitchell Grasslands	19	0.287	0.713	1.0
-

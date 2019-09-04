@@ -32,7 +32,7 @@ import subprocess
 
 class RunCable(object):
 
-    def __init__(self, experiment_id, startyear, endyear, lai_feedback, finite_gm,
+    def __init__(self, experiment_id, startyear, endyear, lai_feedback,
                  site_dir, obs_dir, plot_dir, namelist_dir, param_dir, output_dir, restart_dir,
                  dump_dir, met_fname, co2_ndep_fname, nml_fn,
                  site_nml_fn,veg_param_fn,log_dir, exe, aux_dir,
@@ -42,7 +42,6 @@ class RunCable(object):
         self.startyear = startyear
         self.endyear = endyear
         self.lai_feedback = lai_feedback
-        self.finite_gm = finite_gm
         self.site_dir = site_dir
         self.obs_dir = obs_dir
         self.plot_dir = plot_dir
@@ -353,7 +352,6 @@ class RunCable(object):
                         "leaps": ".TRUE.",
                         "l_vcmaxFeedbk": "%s" % (self.vcmax_feedback),
                         "l_laiFeedbk": ".%s." % (self.lai_feedback),
-                        "cable_user%finite_gm": ".%s." % (self.finite_gm),
                         "cable_user%CASA_OUT_FREQ":  "'annually'" ,
                         "cable_user%limit_labile": "%s" % (self.limit_labile) ,
                         "cable_user%SRF":  ".T." ,  
@@ -683,8 +681,7 @@ if __name__ == "__main__":
     site_dir=sys.argv[5]
     obs_dir=sys.argv[6]
     plot_dir=sys.argv[7]
-    finite_gm=sys.argv[8]
-    exp_name=sys.argv[9]
+    exp_name=sys.argv[8]
 
     
     cwd = os.getcwd()
@@ -724,8 +721,8 @@ if __name__ == "__main__":
 
         # experiment_id = "Cumberland_POP_%s" % (biogeochem)
         experiment_id = site + "_%s_2tiles_%s" % (biogeochem,exp_name)
-        C = RunCable(experiment_id, startyear, endyear, lai_feedback, finite_gm, site_dir,
-                     obs_dir, plot_dir,  namelist_dir,
+        C = RunCable(experiment_id, startyear, endyear, lai_feedback,
+                     site_dir, obs_dir, plot_dir,  namelist_dir,
                      param_dir,output_dir, restart_dir,dump_dir, met_fname, co2_ndep_fname,
                      nml_fn, site_nml_fn,veg_param_fn, log_dir, exe, aux_dir,
                      biogeochem, call_pop,verbose)

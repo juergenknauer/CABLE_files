@@ -1,3 +1,0 @@
-	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation
-CumberlandPlain	2013	2017	-33.615278	150.723611	23.0	30.0	Dry sclerophyll forest
-DalyPasture	2008	2012	-17.1507	133.3502	0.0	5.0	Tropical improved pasture

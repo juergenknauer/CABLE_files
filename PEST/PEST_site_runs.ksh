@@ -7,7 +7,7 @@
 
 # Global settings:
 SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/OzFLUX_sitelist_v1.txt
-#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/test_sites.txt
+#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/test_sites1.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run directory
 #TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
 CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
@@ -56,14 +56,14 @@ rm -r $WD # for development only
 	
 	
     # 1) create csv observation files if not existing
-    if [[ ! -f ${CSV_DIR}/${site}_Hourly.csv && ! -f ${CSV_DIR}/${site}_HalfHourly.csv ]]; then
+    if [[ ! -f ${CSV_DIR}/${site}_Hourly_SOLO.csv && ! -f ${CSV_DIR}/${site}_HalfHourly_SOLO.csv ]]; then
       echo "creating new observation (csv) files"
       ./create_observations_csv.R $site $OBS_DIR $CSV_DIR
     fi
 
-    if [[ -f ${CSV_DIR}/${site}_Hourly.csv ]]; then   # not super safe, but ok for now
+    if [[ -f ${CSV_DIR}/${site}_Hourly_SOLO.csv ]]; then   # not super safe, but ok for now
       obsres="hou"	
-    elif [[ -f ${CSV_DIR}/${site}_HalfHourly.csv ]]; then
+    elif [[ -f ${CSV_DIR}/${site}_HalfHourly_SOLO.csv ]]; then
       obsres="hho"
     fi
 	
@@ -106,7 +106,8 @@ rm -r $WD # for development only
     # 3) set correct directories in CompileObservations.nml and create site-specific site file
     sed -i "s!^  FILE_NAME.*!  FILE_NAME = \"${SITE_DIR}\/${site}\/outputs\/${SIM_NAME}_cable.nc\"!" CompileObservations.nml
     sed -i "s!^  POPfile.*!  POPfile = \"${SITE_DIR}\/${site}\/restart_files\/${RST_NAME}_pop_rst.nc\"!" CompileObservations.nml
-    sed -i "s!OzFluxSites.txt!OzFluxSites_${site}.txt!" CompileObservations.nml
+    sed -i "s!^  CASAfile.*!  CASAfile =  \"${SITE_DIR}\/${site}\/outputs\/${SIM_NAME}_casa.nc\"!" CompileObservations.nml
+    sed -i "s!OzFluxSites_allobs.txt!OzFluxSites_${site}.txt!" CompileObservations.nml
 
     if [[ "$obsres" = "hou" ]]; then  # note: = instead of -eq!!
       sed -i "s! OzFluxRes = 'hho'! OzFluxRes = 'hou'!" CompileObservations.nml
@@ -166,8 +167,8 @@ rm -r $WD # for development only
     endyear=$(grep 'cable_user%YearEnd' ../cable.nml | cut -d "=" -f 2)
     LAI_feedback=$(grep 'l_laiFeedbk' ../cable.nml | cut -d "." -f 2) 
     finite_gm=$(grep 'cable_user%finite_gm' ../cable.nml | cut -d "." -f 2)		    
-echo !!!!!!!!!!!!!finite_gm = $finite_gm
-	
+
+    
     # 9) adjust paths in run_cable_casa_inpest.sh!
     sed -i "s!^bdir=.*!bdir=$(dirname ${WD})!" run_cable_casa_inpest.sh
     sed -i "s!^wdir=.*!wdir=${WD}!" run_cable_casa_inpest.sh
@@ -186,8 +187,9 @@ echo !!!!!!!!!!!!!finite_gm = $finite_gm
 
 	
     # 11) adjust paths in ExtractObservables.nml
-    sed -i "s!CumberlandPlain_CNP_out!${SIM_NAME}!" ExtractObservables.nml
-	
+    #sed -i "s!CumberlandPlain_CNP_out!${SIM_NAME}!" ExtractObservables.nml
+    sed -i "s!^  FILE_NAME =.*!  FILE_NAME = \"outputs/${SIM_NAME}_cable.nc\"!" ExtractObservables.nml
+    
 	
     # 12) adjust paths and names in p2p_${site}.tpl file
     sed -i "s!.*def_veg_params_pest.txt! ${WD}/${site}_veg_params.tpl veg_params_pest.txt!" p2p_${site}.tpl

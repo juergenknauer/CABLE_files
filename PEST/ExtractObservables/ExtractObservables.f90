@@ -23,6 +23,85 @@ FUNCTION BiomeForestFrac (gridcell_biome)
       BiomeForestFrac = 1.0
   end select
 end function BiomeForestFrac
+
+FUNCTION NVISMVGForestFrac (gridcell_MVG)
+! For given NVIS Major Vegetation Group, return forest fraction
+  implicit none
+  integer, intent (in) :: gridcell_MVG
+  real :: NVISMVGForestFrac,CPC,projection_factor
+  projection_factor = 0.71
+  select case (gridcell_MVG)
+    case(1)
+      CPC = 0.89
+    case(2)
+      CPC = 0.81
+    case(3)
+      CPC = 0.79
+    case(4)
+      CPC = 0.50
+    case(5)
+      CPC = 0.31
+    case(6)
+      CPC = 0.15
+    case(7)
+      CPC = 0.37
+    case(8)
+      CPC = 0.27
+    case(9)
+      CPC = 0.23
+    case(10)
+      CPC = 0.24
+    case(11)
+      CPC = 0.19
+    case(12)
+      CPC = 0.25
+    case(13)
+      CPC = 0.14
+    case(14)
+      CPC = 0.33
+    case(15)
+      CPC = 0.29
+    case(16)
+      CPC = 0.13
+    case(17)
+      CPC = 0.21
+    case(18)
+      CPC = 0.34
+    case(19)
+      CPC = 0.05
+    case(20)
+      CPC = 0.16
+    case(21)
+      CPC = 0.11
+    case(22)
+      CPC = 0.06
+    case(23)
+      CPC = 1.0
+    case(24)
+      CPC = 0.04
+    case(25)
+      CPC= 0.1
+    case(26)
+      CPC= 0.1
+    case(27)
+      CPC = 0.02
+    case(28)
+      CPC = 0.1
+    case(29)
+      CPC = 0.1
+    case(30)
+      CPC = 0.5
+    case(31)
+      CPC= 0.20
+    case(32)
+      CPC = 0.24
+    case default
+      CPC= 0.1
+  end select
+  CPC = min(CPC/projection_factor, 1.0)
+  NVISMVGForestFrac = CPC
+END FUNCTION NVISMVGForestFrac 
+
 END MODULE BIOME_MODULE
 !----------------------------------------------------------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------------------------------------------------------
@@ -144,21 +223,22 @@ use DateFunctions
 use ArrayOps
 use BIOME_MODULE
 implicit none
-integer :: i,j,i1,i2,i3,time_dim,land_dim,x_dim,y_dim,patch_dim,soil_dim,pop_dim       ! dimensions of model arrays
-integer :: FILE_ID,VARID,dID,STATUS,FILE_ID_POP,OutputDt
+integer, dimension(nf90_max_var_dims) :: dimIDs
+integer :: i,j,i1,i2,i3,time_dim,land_dim,x_dim,y_dim,patch_dim,soil_dim,casa_dim,pop_dim       ! dimensions of model arrays
+integer :: FILE_ID,VARID,dID,STATUS,FILE_ID_CASA,FILE_ID_POP,OutputDt
 integer :: countobs,nobs,IOstatus,nobs_included,nCellsInCatch,ncells,ncatch,firstidx,varcount
-integer :: siteidx,yy,mm,dd,hh,ff,layer,lpos,ppos,dpos,spos,bpos,ipatch,biomesav
-integer :: titlelength,onl,noop,ios
-integer :: patchidx,npave,timeidx,ntave,nlint,nsave,idx,is,ip
-integer,allocatable :: time_days(:),time_seconds(:),sitearr(:),biome(:)
+integer :: siteidx,yy,mm,dd,hh,ff,layer,lpos,ppos,dpos,spos,bpos,npos,ipatch,biomesav,nvissav,mplant,mlitter,msoil,casa_time
+integer :: titlelength,onl,noop,ios,NDims,NAtts,num1,num2,num3
+integer :: patchidx,npave,timeidx,ntave,nlint,nsave,idx,is,ip,ig
+integer,allocatable :: time_days(:),time_seconds(:),sitearr(:),biome(:),nvis(:)
 real,allocatable :: observable(:)      ! observable calculated from model output
-real :: patchmissing,patchfill,smdep,layerabove,layerbelow
-real :: soilc0_frac,dep1,dep2,upper,lower,varsum,varmean,obssum,obsmean
+real :: patchmissing,patchfill,smdep,layerabove,layerbelow,ForestFrac
+real :: soilc0_frac,dep1,dep2,upper,lower,varsum,varmean,obssum,obsmean,prevlat,prevlon,mulby
 real :: mdm  ! model-data mismatch
-real,allocatable :: time(:),lat(:),lon(:),var1(:),var2(:,:),var3(:,:,:),var3b(:,:,:),var4(:,:,:,:),longitude(:,:),latitude(:,:),patchfrac(:,:) ! model arrays
-real,allocatable :: zse(:,:,:),OOP(:)
+real,allocatable :: time(:),lat(:),lon(:),var1(:),var2(:,:),var3(:,:,:),var3b(:,:,:),var3c(:,:,:),var3d(:,:,:),var4(:,:,:,:),longitude(:,:),latitude(:,:),patchfrac(:,:) ! model arrays
+real,allocatable :: zse(:,:,:),OOP(:),casa_lat(:),casa_lon(:)
 real,allocatable :: obs(:),weight(:),workingvar(:,:,:,:),temp(:,:,:,:),smweight(:),pf(:,:)
-character(200) FILE_NAME,FILE_NAME_POP
+character(200) FILE_NAME,FILE_NAME_CASA,FILE_NAME_POP
 character(40) :: timeunits
 character(10) :: calendar ! 'noleap' for no leap years, 'standard' for leap years
 character(20) :: strname,strinfo
@@ -169,8 +249,8 @@ character(6) :: catchname,prevcatch,prevsitename,str
 character(6),allocatable :: sitename(:)
 character(4) :: siteyy,yystr              ! characters read from obsname
 character(4) :: strdeps, prevstrdeps     ! for OzNet sm
-character(5) :: sitenum
-character(3) :: prevobstype
+character(5) :: sitenum,PatchReweight='nvis'
+character(3) :: prevobstype,CableCasaFile
 character(3),allocatable :: obstype(:)
 character(2) :: sitedd,sitemm,mmstr,ddstr            ! characters read from obsname
 character    :: siteDMYR,sitepatch                 ! character read from obsname or obsinfo
@@ -180,11 +260,11 @@ type(dmydate),allocatable :: ModelDMY(:)  ! day, month, year in model output
 type(hmtime) :: ObsTime
 type(hmtime),allocatable :: ModelHM(:)  ! hours and seconds in model output
 logical :: found, catchfileexists, obsopparamfileexists, leapflag  ! leapflag = .false. for no leap years
-logical :: POPFileOpen,lastcurrent
+logical :: CASAFileOpen,POPFileOpen,lastcurrent
 logical :: verbose = .true. !.false.  !.true.
 
   ! Read in the user-supplied parameters from a namelist file
-  namelist /ExtractObservables_Namelist/ FILE_NAME, FILE_NAME_POP
+  namelist /ExtractObservables_Namelist/ FILE_NAME, FILE_NAME_CASA, FILE_NAME_POP, PatchReweight
 
   write(6,*) 'Read namelist file ExtractObservables.nml'
   open (979, file='ExtractObservables.nml')
@@ -423,7 +503,7 @@ write(6,*) 'Calendar overwritten to "standard"'
   !  combination of csoil1, csoil2 and csoil3 with parameter soilc0_frac)
   write(6,*) 'Read ObsSpecs.txt'
   open(unit=25,file='ObsSpecs.txt',status='old')
-  read(25,*) nobs 
+  read(25,*) nobs
   allocate(obsname(nobs))
   allocate(obsinfo(nobs))
   allocate(grpname(nobs))
@@ -453,6 +533,7 @@ write(6,*) 'Calendar overwritten to "standard"'
   nobs_included = 0
   prevcatch = 'nil'
   prevobstype = 'nil'
+  CASAFileOpen = .false.
   POPFileOpen = .false.
   ! Most observables are created with one or sometimes two model variables
   ! First read one model variable into var3 (if 3-dimensions) or var4 (if 4 dims)
@@ -462,9 +543,69 @@ write(6,*) 'Calendar overwritten to "standard"'
     strname = obsname(i)
     strinfo = obsinfo(i)
     obstype(i) = strname(1:3)
+    if ((obstype(i) .eq. 'Phy') .or. (obstype(i) .eq. 'AGD') .or. (obstype(i) .eq. 'ABM') .or. (obstype(i) .eq. 'SC0') .or. (obstype(i) .eq. 'ABM') .or. (obstype(i) .eq. 'SC0') .or. (obstype(i) .eq. 'NPP')) then
+      CableCasaFile = strinfo(9:11)
+    else 
+      CableCasaFile = 'cab'
+    endif
     if (verbose) write(6,*) 'Obsname ',strname,', Obsinfo ',strinfo
     if (strname(1:3) .ne. prevobstype) then  ! read new variable
-      if (verbose) write(6,*) 'Reading variable ',obstype(i)
+      if (verbose) write(6,*) 'Reading variable for ',obstype(i)
+      ! Open CASA file if necessary
+      if ((CableCasaFile .eq. 'cas') .and. (.not.(CASAFileOpen))) then ! need to open CASA file
+        write(6,*) 'Open CASA file for variables Phy, AGD, ABM, CWD, FLW, NPP and/or SC0'
+        write(6,*) 'Opening ',trim(FILE_NAME_CASA)
+        STATUS = NF90_OPEN( TRIM(FILE_NAME_CASA), NF90_NOWRITE, FILE_ID_CASA )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQ_DIMID( FILE_ID_CASA, 'land', dID )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQUIRE_DIMENSION( FILE_ID_CASA, dID, LEN=casa_dim )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQ_DIMID( FILE_ID_CASA, 'mplant', dID )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQUIRE_DIMENSION( FILE_ID_CASA, dID, LEN=mplant )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQ_DIMID( FILE_ID_CASA, 'mlitter', dID )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQUIRE_DIMENSION( FILE_ID_CASA, dID, LEN=mlitter )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQ_DIMID( FILE_ID_CASA, 'msoil', dID )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQUIRE_DIMENSION( FILE_ID_CASA, dID, LEN=msoil )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQ_DIMID( FILE_ID_CASA, 'time', dID )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_INQUIRE_DIMENSION( FILE_ID_CASA, dID, LEN=casa_time )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        if (casa_time .ne. time_dim) then
+          write(6,*) '****************************************************'
+          write(6,*) 'time_dim = ',time_dim
+          write(6,*) 'casa_time = ',casa_time
+          write(6,*) 'THEY ARE DIFFERENT!!'
+          write(6,*) 'Program stopped'
+          write(6,*) '****************************************************'
+          STOP
+        endif
+        allocate(casa_lat(casa_dim))
+        STATUS = NF90_INQ_VARID( FILE_ID_CASA, 'latitude', VARID )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_GET_VAR( FILE_ID_CASA, VARID, casa_lat )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        if (verbose) write(6,*) 'casa latitude=',casa_lat
+        allocate(casa_lon(casa_dim))
+        STATUS = NF90_INQ_VARID( FILE_ID_CASA, 'longitude', VARID )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_GET_VAR( FILE_ID_CASA, VARID, casa_lon )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        if (verbose) write(6,*) 'casa longitude=',casa_lon
+
+        write(6,*) 'CASA land, mplant, mlitter, msoil, time =',casa_dim,mplant,mlitter, msoil, casa_time
+        if (allocated(var3c)) deallocate(var3c)
+        allocate(var3c(casa_dim,mplant,casa_time))
+        CASAFileOpen = .true.
+        write(6,*) 'CASA file opened successfully'
+      endif
+      ! Open POP file if necessary
       if (((obstype(i) .eq. 'LBA') .or. (obstype(i) .eq. 'LTD')) .and. (.not.(POPFileOpen))) then ! need to open POP file
         write(6,*) 'Open POP ini file for variables LBA and/or LTD'
       !  FILE_NAME_POP = "pop_bios_ini_1900_1999.nc"  	! comes from nml file now
@@ -493,11 +634,25 @@ write(6,*) 'Calendar overwritten to "standard"'
         case ('SMO','SMC','SMF')   ! In situ soil moisture
           STATUS = NF90_INQ_VARID( FILE_ID, 'SoilMoist', VARID )
         case ('SC0')   ! soil carbon density in top 15cm
-          STATUS = NF90_INQ_VARID( FILE_ID, 'TotSoilCarb', VARID )
+          if (CableCasaFile .eq. 'cas') then
+            STATUS = NF90_INQ_VARID( FILE_ID_CASA, 'csoil', VARID )  ! csoil from CASA file
+          else
+            STATUS = NF90_INQ_VARID( FILE_ID, 'TotSoilCarb', VARID )
+          endif
     !    case ('Phy')   ! above-ground phytomass
     !      STATUS = NF90_INQ_VARID( FILE_ID, 'PlantCarbLeaf', VARID )
-        case ('Lit')   ! above-ground litter
-          STATUS = NF90_INQ_VARID( FILE_ID, 'LittCarbStructural', VARID )
+        case ('Lit','FLW')   ! above ground litter; fine litter 
+          if (CableCasaFile .eq. 'cas') then
+            STATUS = NF90_INQ_VARID( FILE_ID_CASA, 'clitter', VARID )  ! clitter from CASA file
+          else
+            STATUS = NF90_INQ_VARID( FILE_ID, 'LittCarbStructural', VARID ) 
+          endif
+        case ('CWD')   ! coarse woody debris
+          if (CableCasaFile .eq. 'cas') then
+            STATUS = NF90_INQ_VARID( FILE_ID_CASA, 'clitter', VARID )  ! clitter from CASA file
+          else
+            STATUS = NF90_INQ_VARID( FILE_ID, 'LittCarbCWD', VARID )
+          endif
         case ('NPP')   ! leaf NPP
           STATUS = NF90_INQ_VARID( FILE_ID, 'NPP', VARID )
         case ('STR')   ! streamflow
@@ -506,8 +661,12 @@ write(6,*) 'Calendar overwritten to "standard"'
           STATUS = NF90_INQ_VARID( FILE_ID_POP, 'basal_area', VARID )
         case ('LTD')   ! live tree density
           STATUS = NF90_INQ_VARID( FILE_ID_POP, 'densindiv', VARID )
-        case ('AGD','Phy')   ! above-ground dry biomass
-          STATUS = NF90_INQ_VARID( FILE_ID, 'TotLivBiomass', VARID )
+        case ('AGD','Phy','ABM')   ! above-ground dry biomass
+          if (CableCasaFile .eq. 'cas') then
+            STATUS = NF90_INQ_VARID( FILE_ID_CASA, 'cplant', VARID )  ! cplant from CASA file
+          else
+            STATUS = NF90_INQ_VARID( FILE_ID, 'TotLivBiomass', VARID )  ! TotLivBiomass from CABLE file
+          endif
       end select
       IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
       ! Read required variable (3-d, except for soil moisture variable that has extra dimension for depth; basal area and tree density are 2-d)
@@ -516,10 +675,34 @@ write(6,*) 'Calendar overwritten to "standard"'
           STATUS = NF90_GET_VAR( FILE_ID_POP, VARID, var1 )
         case ('SMO','SMC','SMF')   ! soil moisture has depth dimension
           STATUS = NF90_GET_VAR( FILE_ID, VARID, var4 )
+        case ('SC0') ! soil carbon density in top 15cm
+          if (CableCasaFile .eq. 'cas') then
+            STATUS = NF90_GET_VAR( FILE_ID_CASA, VARID, var3c ) 
+          else
+            STATUS = NF90_GET_VAR( FILE_ID, VARID, var3 )
+          endif
+        case ('AGD','Phy','ABM','CWD','FLW')   ! 3-d variables that could come from casa or cable
+          if (CableCasaFile .eq. 'cas') then
+            STATUS = NF90_GET_VAR( FILE_ID_CASA, VARID, var3c )
+          else 
+            STATUS = NF90_GET_VAR( FILE_ID, VARID, var3 )
+          endif
         case default         ! all others are 3-d
           STATUS = NF90_GET_VAR( FILE_ID, VARID, var3 )
       end select
       IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      ! Read any additional variables required
+      ! Soil C0 from casa output file is sum of csoil and clitter
+      if ((obstype(i) .eq. 'SC0') .and. (CableCasaFile .eq. 'cas')) then
+        write(6,*) 'Read additional variable clitter from casa file for SC0 observation'
+        allocate(var3d(casa_dim,mplant,casa_time))
+        STATUS = NF90_INQ_VARID( FILE_ID_CASA, 'clitter', VARID )  ! clitter from CASA file
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        STATUS = NF90_GET_VAR( FILE_ID_CASA, VARID, var3d )
+        IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+        var3c = var3c + var3d 
+        deallocate(var3d)
+      endif
       ! Ecosystem respiration is sum of autotrophic and heterotrophic resp ---------------------------------------------------------------
       if (obstype(i) .eq. 'Rec') then  
         STATUS = NF90_INQ_VARID( FILE_ID, 'AutoResp', VARID )
@@ -546,7 +729,29 @@ write(6,*) 'Calendar overwritten to "standard"'
       endif
       ! Calculate soil carbon density in top 15cm using parameter soilc0_frac ------------------------------------------------------------
       ! Observations are in mgC/g = gC/kg
-      if (obstype(i) .eq. 'SC0') then  
+      if (obstype(i) .eq. 'SC0') then  ! calculate soilC from casa output
+        if (CableCasaFile .eq. 'cas') then     ! CASA output
+          ! convert casa array (var3c=csoil+clitter(casa_dim,mplant,casa_time)) to same as cable array (var3=TotSoilCarb(land_dim,patch_dim,time_dim))
+          var3(:,:,:) = 0.0
+          i1 = 0
+          prevlat = 0.0
+          prevlon = 0.0
+          ig = 0
+          ip = 0
+          do while (i1 .lt. casa_dim)
+            i1 = i1 + 1
+            ip = ip + 1
+            if ((casa_lat(i1) .ne. prevlat) .or. (casa_lon(i1) .ne. prevlon)) then
+              ig = ig + 1
+              ip = 1
+              prevlat = casa_lat(i1)
+              prevlon = casa_lon(i1)
+            endif
+            do i3 = 1,casa_time
+                var3(ig,ip,i3) = var3c(i1,1,i3) + var3c(i1,2,i3) + var3c(i1,3,i3)   ! add over soil pools
+            enddo
+          enddo
+        endif
         STATUS = NF90_INQ_VARID( FILE_ID, 'rhosoil', VARID )  ! soil density (kg/m3)
         IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
         STATUS = NF90_GET_VAR( FILE_ID, VARID, var2 )
@@ -573,16 +778,21 @@ write(6,*) 'Calendar overwritten to "standard"'
           STOP
         endif
         if (verbose) write(6,*) 'Parameter soilc0_frac = ',soilc0_frac
+        if (CableCasaFile .eq. 'cas') then
+          mulby = 1.0
+        else
+          mulby = 1000.0
+        endif
         do i3 = 1,time_dim
           do i2 = 1,patch_dim
             do i1 = 1,land_dim
-              var3(i1,i2,i3) = 1000.0 * soilc0_frac * var3(i1,i2,i3) / 0.15 / var2(i1,i2)  ! 0.001 * fraction * kg C m-2 /m /kg m-3 = gC /kg 
+              var3(i1,i2,i3) = mulby * soilc0_frac * var3(i1,i2,i3) / 0.15 / var2(i1,i2)  ! 0.001 * fraction * kg C m-2 /m /kg m-3 = gC /kg 
             enddo
           enddo
         enddo
       endif
       ! Calculate above-ground phytomass -------------------------------------------------------------------------------------------------------
-      ! Observations are in tC/ha/y = 0.1 kg/m2/y  ?? not sure about year bit
+      ! Observations are in tC/ha = 0.1 kg/m2 
    !   if (obstype(i) .eq. 'Phy') then 
    !     STATUS = NF90_INQ_VARID( FILE_ID, 'PlantCarbWood', VARID )
   !      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
@@ -591,11 +801,65 @@ write(6,*) 'Calendar overwritten to "standard"'
 !        ! Observation model for above-ground phytomass
 !        var3 = (var3 + 0.7*var3b) * 10.0    ! 10.0 for units (kgC/m2 to tC/ha)
 !      endif
-      ! Calculate above-ground litter ----------------------------------------------------------------------------------------------------------
-      ! Observations are in tC/ha/y = 0.1 kg/m2/y
-      if (obstype(i) .eq. 'Lit') then  ! calculate above-ground litter
-      ! Observation model for above-ground phytomass
-        var3 = 10.0*0.4*var3     ! THIS NEEDS REVISITING ******************************************  placeholder only (10.0 for units kgC/m2 to tC/ha)
+      ! Calculate above-ground litter/fine litter ----------------------------------------------------------------------------------------------------------
+      ! VAST-Raison observations are in tC/ha = 0.1 kg/m2; VW_fine_litter were in tDM/ha but were converted in CompileObs to tC/ha = 0.1 kg/m2/y
+      if ((obstype(i) .eq. 'Lit') .or. (obstype(i) .eq. 'FLW')) then  ! calculate above-ground litter
+      ! Observation model for above-ground litter
+        if (CableCasaFile .eq. 'cas') then     ! CASA output
+          ! convert casa array (var3c=clitter(casa_dim,mlitter,casa_time)) to same as cable array (var3=LittCarbStructural(land_dim,patch_dim,time_dim))
+          var3(:,:,:) = 0.0
+          i1 = 0
+          prevlat = 0.0
+          prevlon = 0.0
+          ig = 0
+          ip = 0
+          do while (i1 .lt. casa_dim)
+            i1 = i1 + 1
+            ip = ip + 1
+            if ((casa_lat(i1) .ne. prevlat) .or. (casa_lon(i1) .ne. prevlon)) then
+              ig = ig + 1
+              ip = 1
+              prevlat = casa_lat(i1)
+              prevlon = casa_lon(i1)
+            endif
+            do i3 = 1,casa_time
+                var3(ig,ip,i3) = var3c(i1,2,i3)  ! clitter(casa_dim,2,casa_time)
+            enddo
+          enddo
+          var3 = 10.0*0.4*var3/1000.0
+        else   ! using cable output
+          var3 = 10.0*0.4*var3     ! 10 for units, 0.4 for above-ground
+        endif
+      endif
+      ! Calculate coarse woody debris  ----------------------------------------------------------------------------------------------------------
+      ! Observations were in tDM/ha but were converted in CompileObs to tC/ha = 0.1 kg/m2
+      if (obstype(i) .eq. 'CWD') then  ! calculate coarse woody debris
+      ! Observation model for coarse woody debris
+        if (CableCasaFile .eq. 'cas') then     ! CASA output
+          ! convert casa array (var3c=clitter(casa_dim,mlitter,casa_time)) to same as cable array (var3=LittCarbStructural(land_dim,patch_dim,time_dim))
+          var3(:,:,:) = 0.0
+          i1 = 0
+          prevlat = 0.0
+          prevlon = 0.0
+          ig = 0
+          ip = 0
+          do while (i1 .lt. casa_dim)
+            i1 = i1 + 1
+            ip = ip + 1
+            if ((casa_lat(i1) .ne. prevlat) .or. (casa_lon(i1) .ne. prevlon)) then
+              ig = ig + 1
+              ip = 1
+              prevlat = casa_lat(i1)
+              prevlon = casa_lon(i1)
+            endif
+            do i3 = 1,casa_time
+                var3(ig,ip,i3) = var3c(i1,3,i3)  ! clitter(casa_dim,3,casa_time)
+            enddo
+          enddo
+          var3 = 10.0*0.4*var3/1000.0
+        else   ! using cable output
+          var3 = 10.0*0.4*var3       ! 10 for units, 0.4 for above-ground 
+        endif
       endif
       ! Calculate leafNPP ---------------------------------------------------------------------------------------------------------------------
       ! Observation in tC/ha/yr
@@ -605,9 +869,33 @@ write(6,*) 'Calendar overwritten to "standard"'
       endif
       ! Calculate above-ground drymass ----------------------------------------------------------------------------------------------------------
       ! Observations are in Mg/ha = 0.1 kg/m2
-      if ((obstype(i) .eq. 'AGD') .or. (obstype(i) .eq. 'Phy')) then  ! calculate above-ground drymass
+      if ((obstype(i) .eq. 'AGD') .or. (obstype(i) .eq. 'Phy') .or. (obstype(i) .eq. 'ABM')) then  ! calculate above-ground drymass from casa output
       ! Observation model for above-ground drymass
-        var3 = 0.78*10.0*var3     ! Assumes 78% drymass is aboveground, 10 is for unit conversion from kgC/m2 to Mg/ha
+        if (CableCasaFile .eq. 'cas') then     ! CASA output
+          ! convert casa array (var3c=cplant(casa_dim,mplant,casa_time)) to same as cable array (var3=TotLivBiomass(land_dim,patch_dim,time_dim))
+          var3(:,:,:) = 0.0
+          i1 = 0
+          prevlat = 0.0
+          prevlon = 0.0
+          ig = 0
+          ip = 0
+          do while (i1 .lt. casa_dim)
+            i1 = i1 + 1
+            ip = ip + 1
+            if ((casa_lat(i1) .ne. prevlat) .or. (casa_lon(i1) .ne. prevlon)) then
+              ig = ig + 1
+              ip = 1
+              prevlat = casa_lat(i1)
+              prevlon = casa_lon(i1)
+            endif
+            do i3 = 1,casa_time
+                var3(ig,ip,i3) = var3c(i1,1,i3) + var3c(i1,2,i3) + var3c(i1,3,i3)   ! add over mplant (leaf,wood,froot) 
+            enddo
+          enddo
+          var3 = 0.78*10.0*var3/1000.0 
+        else 
+          var3 = 0.78*10.0*var3     ! CABLE output; Assumes 78% drymass is aboveground, 10 is for unit conversion from kgC/m2 to Mg/ha
+        endif
       endif
       ! Calculate live tree number density ----------------------------------------------------------------------------------------------------------
       ! Observations are in n/ha = 10000 x n/m2
@@ -619,33 +907,32 @@ write(6,*) 'Calendar overwritten to "standard"'
       if (obstype(i) .eq. 'NEP') var3 = - var3   
       if (verbose) write(6,*) 'Variable successfully read'
     endif  ! read new variable
+    ! Extract processing type
     obs_proc(i) = strinfo(1:3)   ! observation can be absolute, anomaly, cdf matching etc
-    ! length of sitename varies by observation type
+    ! Extract sitename from obsname - length of sitename varies by observation type
     select case (obstype(i))
       case ('GPP','NEP','Rec','Rso','EvT','LAI','SMC','SMO','SMF')
         onl = 3
-      case ('SC0','Phy','Lit','NPP')
+      case ('SC0','Lit','Phy','NPP','CWD','FLW')
         onl = 4
-      case ('LBA','LTD')
+      case ('LBA','LTD','AGD','ABM')
         onl = 5
       case ('STR')
         onl = 6
     end select 
-    ! Extract sitename from obsname
     str = strname(4:4+onl-1)
-    if ((obstype(i) .eq. 'STR') .and. (str(1:2) .eq. '00')) str = str(3:6)  ! 00 used to pad 4-char catchment names in obsname
+    !if ((obstype(i) .eq. 'STR') .and. (str(1:2) .eq. '00')) str = str(3:6)  ! 00 used to pad 4-char catchment names in obsname
     sitename(i) = str   ! character string for site
+    ! Extract model gridcell for observation (or for STR, number of gridcells in catchment) from obsinfo
     select case (obstype(i))
       case ('STR') 
         sitenum = strinfo(4:6)    ! character string of number of gridcells representing catchment
         read(sitenum,*) nCellsInCatch   ! number of gridcells representing catchment
-      case ('LBA','LTD')
-        sitenum = strinfo(4:8)    ! character string of index of observation location in spatial array
-        read(sitenum,*) siteidx   ! index of observation location in spatial array    
       case default
-        sitenum = strinfo(4:7)    ! character string of index of observation location in spatial array
+        sitenum = strinfo(4:8)    ! character string of index of observation location in spatial array
         read(sitenum,*) siteidx   ! index of observation location in spatial array
     end select
+    ! Extract time information
     siteDMYR = strname(4+onl:4+onl)   ! 'F','H','D','B','M','Y','R','I' for half-hour, hour, day, bi-monthly, month, annual, run ave and ini observation
     if ((siteDMYR .eq. 'F').or.(siteDMYR .eq. 'H').or.(siteDMYR .eq. 'Y').or.(siteDMYR .eq. 'M').or.(siteDMYR .eq. 'D').or.(siteDMYR .eq. 'B')) then
       siteyy = strname(onl+5:onl+8)
@@ -669,8 +956,10 @@ write(6,*) 'Calendar overwritten to "standard"'
     endif
     ppos = scan(strinfo,'P',.true.)
     if (ppos .ne. 0) read(strinfo(ppos+1:ppos+1),*) sitepatch
+    npos = scan(strinfo,'N',.true.)  ! NVIS MVG
+    if (npos .ne. 0) read(strinfo(npos+1:npos+2),*) nvissav  ! save to put into nvis(:) later once allocated
     bpos = scan(strinfo,'B',.true.)  ! biome
-    if (bpos .ne. 0) read(strinfo(bpos+1:bpos+2),*) biomesav  ! save to put into biome(1) later once allocated
+    if (bpos .ne. 0) read(strinfo(bpos+1:bpos+2),*) biomesav  ! save to put into biome(:) later once allocated
   !  spos = scan(strinfo,'S',.true.)  ! LBA and LTD don't have patch info, instead scale factor for forest patch to gridcell
   !  if (spos .ne. 0) read(strinfo(spos+1:len_trim(strinfo)),*) popscale
     if (obstype(i) .eq. 'SMC') then  ! CosmOz soil moisture has layer associated
@@ -923,6 +1212,7 @@ write(6,*) 'Calendar overwritten to "standard"'
       write(6,*) '***************************************************************************************'
       write(6,*) 'ERROR: ExtractObservables.exe did not find any model time range for observation '
       write(6,*) obsname(i),' ',obsinfo(i)
+      write(6,*) 'siteDMYR=',siteDMYR
       write(6,*) 'Program stopped'
       write(6,*) '***************************************************************************************'
       STOP
@@ -968,10 +1258,13 @@ write(6,*) 'Calendar overwritten to "standard"'
     if (.not.(allocated(sitearr))) then
       allocate(sitearr(nsave))
       allocate(biome(nsave))
+      allocate(nvis(nsave))
     else
       if (nsave .ne. size(sitearr)) then
         deallocate(sitearr)   ! must have been used previously for different nsave
         allocate(sitearr(nsave))
+        deallocate(nvis)
+        allocate(nvis(nsave))
         deallocate(biome)
         allocate(biome(nsave))
       endif
@@ -981,10 +1274,10 @@ write(6,*) 'Calendar overwritten to "standard"'
         write(6,*) 'Read Catchment_gridcells.txt for catchment ',trim(sitename(i)),':'
         do 
           read(35,*,IOSTAT=ios) catchname, ncells
-          if (ios .ne. 0) STOP "Problem reading catchment file Catchment_gridcells.txt"
+          if (ios .ne. 0) STOP "Problem reading catchment file Catchment_gridcells.txt - eof"
           if (catchname .ne. trim(sitename(i))) then
             do j = 1,ncells
-              read(35,*,IOSTAT=ios) sitearr(j)
+              read(35,*,IOSTAT=ios) !sitearr(j)
               if (ios .ne. 0) STOP 'Problem reading catchment file Catchment_gridcells.txt'
             enddo
             read(35,*) !precip
@@ -1019,6 +1312,7 @@ write(6,*) 'Calendar overwritten to "standard"'
       endif
     else
       sitearr(1) = siteidx
+      nvis(1) = nvissav  ! was read from obsinfo earlier
       biome(1) = biomesav  ! was read from obsinfo earlier
     endif  ! if STR read gridcells, otherwise use index from obsinfo
 
@@ -1028,9 +1322,21 @@ write(6,*) 'Calendar overwritten to "standard"'
     !if (verbose) write(6,*) 'Extract part of variable needed to create observable'
     select case (obstype(i))
       case ('LBA','LTD')   !  basal area and tree density are 1-d from POP ini file
-        workingvar(1,1,1,1) = var1(siteidx)*BiomeForestFrac(biome(1))
+        if (PatchReweight .eq. 'biome') then
+          ForestFrac = BiomeForestFrac(biome(1))
+        else
+          ForestFrac = NVISMVGForestFrac(nvis(1))
+        endif
+        workingvar(1,1,1,1) = var1(siteidx)*ForestFrac
       case ('SMO','SMC','SMF')   ! soil moisture has depth dimension
         workingvar = var4(sitearr,patchidx:patchidx+npave-1,layer:layer+nlint-1,timeidx:timeidx+ntave-1)
+      case ('Phy','AGD','ABM')
+     !   if (strinfo(4:6) .eq. 'cas') then     ! CASA output
+        !  workingvar(1,1,1,1) = var1(siteidx) ! what was this>??????
+     !     workingvar(1,1,1,1) = var3(siteidx) 
+     !   else
+        workingvar(:,:,1,:) = var3(sitearr,patchidx:patchidx+npave-1,timeidx:timeidx+ntave-1)  ! CABLE file, usual 3-d array
+     !   endif 
       case default         ! all others are 3-d
         workingvar(:,:,1,:) = var3(sitearr,patchidx:patchidx+npave-1,timeidx:timeidx+ntave-1)
     end select
@@ -1076,9 +1382,14 @@ write(6,*) 'Calendar overwritten to "standard"'
             pf(is,:) = patchfrac(sitearr(is),:)   ! 
             write(6,*) 'Patch averaging is "p" but left alone (',patchfrac(sitearr(is),:),') to (',pf(is,:),') for biome ',biome(is),' at gridcell ',sitearr(is)
           else
-            pf(is,1) = BiomeForestFrac(biome(is))
+            if (PatchReweight .eq. 'biome') then
+              ForestFrac = BiomeForestFrac(biome(is))
+            else
+               ForestFrac = NVISMVGForestFrac(nvis(is))
+            endif
+            pf(is,1) = ForestFrac
             pf(is,2) = 0.0
-            pf(is,3) = 1.0 - BiomeForestFrac(biome(is))
+            pf(is,3) = 1.0 - ForestFrac
             write(6,*) 'Patch averaging is "p" so reweight patches from (',patchfrac(sitearr(is),:),') to (',pf(is,:),') for biome ',biome(is),' at gridcell ',sitearr(is)
           endif
         enddo

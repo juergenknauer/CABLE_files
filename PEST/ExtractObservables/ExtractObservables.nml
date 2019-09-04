@@ -1,8 +1,14 @@
 &ExtractObservables_Namelist
 !
 ! Select CABLE model output file 
-  FILE_NAME = "outputs/CumberlandPlain_CNP_out_cable.nc"
+  FILE_NAME = "/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/BIOS3_simulations/allobs/run_190601/outputs/bios_out_cable_1990_2018.nc"
+!
+! Select CASA file 
+  FILE_NAME_CASA = "/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/BIOS3_simulations/allobs/run_190601/outputs/bios_out_casa_1990_2018_casa_only.nc"
 !
 ! Select POP ini file (only used for Auscover Biomass Plot Library obs) 
-  FILE_NAME_POP = "nil"
+  FILE_NAME_POP = "/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/BIOS3_simulations/allobs/run_190601/restart/pop_bios_ini_1900_1989.nc"
+!
+! Reweight patches according to biome, NVIS MVG or not at all ('biome' or 'nvis')
+  PatchReweight = 'nvis'
 /

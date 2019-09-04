@@ -58,5 +58,5 @@ colnames(csv_vars) <- c('Year','Month','Day','Hour','Minute','GPP','NEP','evap',
 
 
 Sys.umask("037")  # should be chmod 777
-write.table(csv_vars,file=paste0(out_dir,"/",site,"_",timestep,".csv"),sep=",",col.names=TRUE,row.names=FALSE,quote=FALSE)
+write.table(csv_vars,file=paste0(out_dir,"/",site,"_",timestep,"_SOLO.csv"),sep=",",col.names=TRUE,row.names=FALSE,quote=FALSE)
 

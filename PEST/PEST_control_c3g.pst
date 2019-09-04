@@ -1,7 +1,7 @@
 pcf
 * control data
 restart estimation
-13      149887     1      3     6
+13      149887     1      2     6
    1   1  single  point   1   0   0
 20.0 -3.0 0.3 0.01 10
  0.5   5 0.001
@@ -44,4 +44,3 @@ restart estimation
 * prior information
 alpha_c3g      1.0 * alpha_c3g      =  0.28                621.772 regul_pargro
 extkn_c3g      1.0 * extkn_c3g      =  0.4                 621.772 regul_pargro
-g1c3_c3g       1.0 * g1c3_c3g       =  3.0                 621.772 regul_pargro

@@ -3,8 +3,7 @@
 #SBATCH --time=2:00:00
 #SBATCH --mem=20GB
 #SBATCH --job-name="PEST_site"
-#SBATCH --nodes=9
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=9
 #SBATCH --error=CumbPest.err
 #SBATCH --output=CumbPest.out
 
@@ -18,4 +17,4 @@ ulimit -s 10240
 WD=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site/CumberlandPlain
 
 rm -rf ./tmp/PEST/PEST1/CABLE*
-mpirun -np 9 ppest ${WD}/PEST_case /m ${WD}/tmp/PEST/PEST1/CABLE > log_PEST_case
+mpirun ppest ${WD}/PEST_case /m ${WD}/tmp/PEST/PEST1/CABLE > log_PEST_case

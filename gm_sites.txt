@@ -1,4 +1,7 @@
 	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation	NVIS5_Group	forest_fraction	grass_fraction	C4_fraction
+AdelaideRiver	2008	2008	-13.0769	131.1178	16.0	21.0	Woody Savanna	12	0.378	0.622	1.0
 CumberlandPlain	2013	2018	-33.615278	150.723611	23.0	30.0	Dry sclerophyll forest	25	0.724	0.276	0.64
+Ridgefield	2017	2017	-32.506102	116.966827				25	0.275	0.725	0.467
+Warra	2014	2017	-43.09502	146.65452	55.0	80.0	Eucalyptus obliqua tall forest	2	0.85	0.15	0.035
 Tumbarumba	2002	2017	-35.6566	148.1516	40.0	70.0	wet sclerophyll forest	2	0.898	0.102	0.036
-
+Whroo	2012	2016	-36.6732	145.0294	28.0	35.0	Dry sclerophyll woodland	3	0.533	0.467	0.459

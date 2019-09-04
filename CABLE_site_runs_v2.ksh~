@@ -6,30 +6,29 @@
 
 # Global settings:
 #SITE_LIST=OzFLUX_sitelist_v1.txt
-SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/gm_sites.txt
+SITE_LIST=gm_sites.txt
 SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site
 AUX_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Vanessa/CABLE-AUX
 LOG_DIR=${SITE_DIR}/logs
-CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/NESP2pt9_BLAZE_gm
+CODE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_code/gm_testing
 FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
 PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/plots_R
 
-EXP_NAME=test
+EXP_NAME=imp
 LAI_feedback=FALSE
-RUN_ONLY=FALSE   # No spinup
+finite_gm=FALSE
+
 
 
 ### no changes needed beyond that point ###
 
-echo ${LAI_feedback} ${SITE_DIR} ${OBS_DIR} ${PLOT_DIR} \
-     ${EXP_NAME} ${SITE_LIST} > run_settings.txt
-
-
 # site names and number of sites
-site=$(cut -f 1 $SITE_LIST)
+sites=$(cut -f 1 $SITE_LIST)
 let nr_sites=$(wc -l $SITE_LIST | awk '{print $1}')-1 
 
+# clean up slurm file
+sed -i '29,$d' run_cable_casa.slurm
 
 # set current directory as base directory
 BASE_DIR=$PWD
@@ -41,12 +40,12 @@ fi
 
 
 
-for s in $site; do
+for site in $sites; do
 
-    echo starting site $s
+    echo starting site $site
     
     # create working directory if not existing (copy from template directory)
-    WD=${SITE_DIR}/${s}
+    WD=${SITE_DIR}/${site}
     if [ ! -d $WD ]; then
 	mkdir $WD
         cd $WD
@@ -68,28 +67,27 @@ for s in $site; do
     cp ${BASE_DIR}/run_cable_site_CNP.py .
     cp ${BASE_DIR}/run_cable_site_CNP_meta.py .
 
-    if [ $RUN_ONLY = "TRUE" ]; then
-       sed -i "$ s!C.main(.*!C.main(SPIN_UP=False, TRANSIENT=False, SIMULATION=True)!" run_cable_site_CNP_meta.py	
-    fi	
+
     
     cd $BASE_DIR
+    
+    ## extract start- and endyear from sitelist (alternative: from metfile)
+    startyear=`awk -v site=${site} '$0~site {print $2}' $SITE_LIST`
+    endyear=`awk -v site=${site} '$0~site {print $3}' $SITE_LIST`
 
+    ## run on terminal:
+    # python run_cable_site_CNP_meta.py $site $startyear $endyear
 
+    ## run on cluster (add to .slurm file):
+    echo python ./run_cable_site_CNP_meta.py $site $startyear $endyear $LAI_feedback \
+	 $SITE_DIR $OBS_DIR $PLOT_DIR $finite_gm $EXP_NAME >> run_cable_casa.slurm
+        
 done
-
-## extract start- and endyear from sitelist (alternative: from metfile)
-#startyear=`awk -v site=${site} '$0~site {print $2}' $SITE_LIST`
-#endyear=`awk -v site=${site} '$0~site {print $3}' $SITE_LIST`
-
-
 
 #sed -i "s!^#SBATCH --ntasks-per-node.*!#SBATCH --ntasks-per-node=${nr_sites}!" run_cable_casa.slurm
 
 ## send to cluster
-sbatch --array=1-${nr_sites} --output=${LOG_DIR}/%x_%a.out --error=${LOG_DIR}/%x_%a.err run_cable_casa_array.slurm
-
-
-
+sbatch --array=1-${nr_sites} --output=${LOG_DIR}/%x_%a.out --error=${LOG_DIR}/%x_%a.err run_cable_casa.slurm
 
 
 ## command line arguments to 'run_cable_site_CNP_meta.py'

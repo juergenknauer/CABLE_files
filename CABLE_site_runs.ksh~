@@ -15,15 +15,33 @@ FORCING_DIR=/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met
 OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux
 PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/plots_R
 
-EXP_NAME=test
 LAI_feedback=FALSE
+finite_gm=FALSE
+coord_PS=TRUE
+coord=T  # only if coord_PS = TRUE
+
+if [ $finite_gm = "TRUE" ]; then
+    if [ $coord_PS = "TRUE" ]; then
+	EXP_NAME=exp_coord${coord}
+    else
+	EXP_NAME=exp_nocoord
+    fi
+else
+    if [ $coord_PS = "TRUE" ]; then
+	EXP_NAME=imp_coord${coord}
+    else
+        EXP_NAME=imp_nocoord
+    fi
+fi 
+
+
 RUN_ONLY=FALSE   # No spinup
 
 
 ### no changes needed beyond that point ###
 
-echo ${LAI_feedback} ${SITE_DIR} ${OBS_DIR} ${PLOT_DIR} \
-     ${EXP_NAME} ${SITE_LIST} > run_settings.txt
+echo ${LAI_feedback} ${SITE_DIR} ${OBS_DIR} ${PLOT_DIR} ${finite_gm} \
+     ${coord_PS} ${EXP_NAME} ${SITE_LIST} > run_settings.txt
 
 
 # site names and number of sites

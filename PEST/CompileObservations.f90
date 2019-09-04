@@ -34,7 +34,7 @@ use DateFunctions
 implicit none
 CONTAINS
 !###############################################################################
-function FindTimeIndex (ObsDate,timeDMY,leapflag)
+function FindTimeIndex (ObsDate,timeDMY,leapflag,output_averaging)
 ! Find time index corresponding to data ObsDate
 use TypeDef
 use UTILS
@@ -43,8 +43,11 @@ implicit none
 integer :: FindTimeIndex
 type (dmydate), intent(in) :: ObsDate
 type (dmydate), intent(in) :: timeDMY(:)
+character(8), intent(in) :: output_averaging
 logical, intent(in) :: leapflag
+type (dmydate) :: TempDate
 integer :: j
+if (output_averaging .eq. 'day') then
   if (leapflag) then
     FindTimeIndex = DayDifference(ObsDate,timeDMY(1)) + 1  ! only works with leap years
 !   write(6,*) 'FindTimeIndex: ',ObsDate,timeDMY(FindTimeIndex),FindTimeIndex
@@ -68,6 +71,27 @@ integer :: j
     write(6,*) '***********************************************************************'
     STOP
   endif
+endif
+if (output_averaging .eq. 'monthly') then
+  do j = 1,size(timeDMY)
+    TempDate = timeDMY(j)
+    if ((TempDate%Month .eq. ObsDate%Month)  .and. (TempDate%Year .eq. ObsDate%Year)) then 
+      FindTimeIndex = j
+      exit
+    endif
+  enddo
+  if ((timeDMY(FindTimeIndex)%Month .ne. ObsDate%Month) .and. (timeDMY(FindTimeIndex)%Year .ne. ObsDate%Year)) then
+    write(6,*) '***********************************************************************'
+    write(6,*) 'Error finding time for observable from model file in routine FindTimeIndex (monthly model data)'
+    write(6,*) 'Model run starts ',timeDMY(1)
+    write(6,*) 'Daily observation is ',ObsDate
+    write(6,*) 'Days since start is =',FindTimeIndex
+    write(6,*) 'which gives time of ',timeDMY(FindTimeIndex)
+    write(6,*) 'Program stopped'
+    write(6,*) '***********************************************************************'
+    STOP
+  endif
+endif
 end function FindTimeIndex
 
 END MODULE ArrayOps
@@ -82,83 +106,103 @@ use ArrayOps
 use DateFunctions
 use String_Utility
 use parse
-use BIOME_MODULE
 implicit none
-integer :: i,j,k,n,m,p,ip,ig,time_dim,land_dim,x_dim,y_dim,patch_dim,soil_dim,nlayer,ncatch,ncells,idum,pidx,pop_land_dim
-integer :: FILE_ID, CLIMATE_FILE_ID, POP_FILE_ID, VARID, VARID2, dID, STATUS, iarea,iostat
+integer :: i,j,j2,k,n,m,p,ip,ig,time_dim,land_dim,x_dim,y_dim,patch_dim,soil_dim,nlayer,ncatch,ncells,idum,cidx,pidx,pop_land_dim,casa_land_dim
+integer :: FILE_ID, CLIMATE_FILE_ID, CASA_FILE_ID,POP_FILE_ID, VARID, VARID2, dID, STATUS, iarea,iostat
 integer :: numDims, numAtts
 integer, dimension(nf90_max_var_dims) :: rhDimIds
-integer :: ddstart,mmstart, yystart, ddend, mmend, yyend,countobs,nsites,yy,mm,dd,hh,ff,nn,jland,sitecount, countobs_newsite,ipatch
+integer :: ddstart,mmstart, yystart, ddend, mmend, yyend,countobs,nsites,yy,mm,dd,hh,ff,nn,jland,sitecount, countobs_newsite,ipatch,nsoilobs
 integer :: vr_flag,vr_sitenum,countfile,count_hr,count_days,Qobs_nt,Qobs_xls_nt,Qobs_xls_ncatch,idx,Qdays,bpl_undist,bpl_day,bpl_mon,bpl_yr,bpl_ltd
-integer :: d1,d2,timeidx,jlandsav(1000),jlandcount,precipcount,totalprecipcount,varcount,firstidx,icount,iplus1
+integer :: d1,d2,timeidx,jlandsav(1000),jlandcount,precipcount,totalprecipcount,varcount,firstidx,icount,iplus1,smdays,ncol
+integer,allocatable :: Mcount(:)
 integer :: maxobs = 10000000
 !integer :: ntan = 10
 integer, allocatable :: time_days(:),biome(:),iveg(:),sortedmap(:)
 real :: sitelat, sitelon, GPP,NEP,evap,Reco,SMF,Rsoil,patchmissing,patchfill,varsum,varmean
-real :: modelres, rangeweight,sum_sm,sum_dep,sm,dep,rdum,prevlat,prevlon,precip,totalprecip
-real :: vr_lat,vr_lon,vr_NPP,vr_agphyto,vr_aglitter,vr_soilC0,vr_precip,sm_hr, dep_hr,Q,Qsum
+real :: modelres, rangeweight,sum_sm,sum_dep,sm,dep,sum_sm_mon,sm_mon,sum_dep_mon,dep_mon,rdum,prevlat,prevlon,precip,totalprecip
+real :: vr_lat,vr_lon,vr_NPP,vr_agphyto,vr_aglitter,vr_soilC0,vr_precip,sm_hr, dep_hr,Q,Qsum,sm_sum,obsvalue
+real :: vw_lat,vw_lon,vw_fine_lit,vw_CWD
 real :: bpl_lat,bpl_lon,bpl_lba,bpl_agd,bpl_agd_se    ! biomass plot library variables
+real :: maxbio_lon,maxbio_lat,maxbio_agb
 real,allocatable :: time(:),local_lat(:),local_lon(:),latitude(:,:),longitude(:,:),patchfrac(:,:),zse(:,:,:),Qobs_xls_Q(:,:),Qobs_Q(:)
-real,allocatable :: obs(:),weight(:),pop_lat(:),pop_lon(:),oznet(:),lai(:)
+real,allocatable :: obs(:),weight(:),casa_lat(:),casa_lon(:),pop_lat(:),pop_lon(:),oznet(:),lai(:),LAI16(:)
 real,allocatable :: sortedobs(:),sortedweight(:)
 real,allocatable :: nvis(:),reccap(:),Rainf(:,:,:)
-character(200) FILE_NAME,OBS_PATH,flnm,OzFluxSiteFile,LAISiteFile,LAIBinFile,CosmOzSiteFile,OzNetSiteFile,CatchmentFile,ClimateFile,POPfile
+real,allocatable :: Msum(:)
+character(200) FILE_NAME,OBS_PATH,flnm,OzFluxSiteFile,LAISiteFile,LAIBinFile,CosmOzSiteFile,OzNetSiteFile,CatchmentFile,ClimateFile,POPfile,CASAfile 
 character(200) :: NVISFile, RECCAPFile,OzFluxSMSiteFile,OzFluxRsoSiteFile
 character(400) :: strline
 character(40) :: sitename,str,timeunits,tres
-character(10) :: datestr
+character(10) :: datestr,OzFluxProc
 character(8) :: output_averaging
 character(6) :: depstr,catchname
 character(6),allocatable :: obssitename(:)
-character(5) :: timestr,bpl_SiteID
-character(4) :: yystr,vr_SiteID
+character(5) :: timestr,bpl_SiteID,max_SiteID
+character(5) :: VRPhyfile='cable',AGDfile='cable',CableCasaFile='cable'
+character(4) :: yystr,vr_SiteID,vw_SiteID
 character(3) :: sitecode,Rsodm='day',SMCdm='day',SMOdm='day',SMFdm='day',STRdm='day'  !  default value is daily
+character(3) :: LAIbm = 'biw' ! default is biweekly for LAI obs
 character(3),allocatable :: obstype(:),obs_proc(:)   ! obs_proc can be 'abs','ano','cdf' for absolute, anomaly, cdf matching
 character(3),allocatable :: sortedsitename(:),sortedobstype(:),sortedobs_proc(:)
-character(3) :: obscode(17) = (/ 'EvT','GPP','NEP','Rec','Rso','LAI','NPP','Phy','Lit','LBA','LTD','AGD','SC0','SMC','SMO','SMF','STR' /)
+character(3) :: obscode(20) = (/ 'EvT','GPP','NEP','Rec','Rso','LAI','NPP','Phy','Lit','LBA','LTD','AGD','ABM','CWD','FLW','SC0','SMC','SMO','SMF','STR' /)
 character(3) :: EvTSelect='not',GPPSelect='not',NEPSelect='not',RecSelect='not',RsoSelect='not',NPPSelect='not',VRNPPSelect='not',VRSoilC0Select='not'  ! default = don't include
-character(3) :: VRPhySelect='not',VRLitSelect='not',SMCSelect='not',SMOSelect='not',SMFSelect='not',STRSelect='not',LBASelect='not',LTDSelect='not',AGDSelect='not'
-character(3) :: LAISelect = 'not',xls_csv
+character(3) :: VRPhySelect='not',VRLitSelect='not',SMCSelect='not',SMOSelect='not',SMFSelect='not',STRSelect='not',LBASelect='not',LTDSelect='not',AGDSelect='not',ABMSelect='not'
+character(3) :: LAISelect = 'not',VWLitSelect='not',VWCWDSelect='not',xls_csv
 character(3) :: OzFluxRes='day'
 character(3) :: EvTProcess='abs',GPPProcess='abs',NEPProcess='abs',RecProcess='abs',RsoProcess='abs',VRNPPProcess='abs',VRSoilC0Process='abs'  !default = absolute value
-character(3) :: VRPhyProcess='abs',VRLitProcess='abs',SMCProcess='abs',SMOProcess='abs',SMFProcess='abs',STRProcess='abs',LBAProcess='abs',LTDProcess='abs',AGDProcess='abs'
-character(3) :: LAIProcess = 'abs'
+character(3) :: VRPhyProcess='abs',VRLitProcess='abs',SMCProcess='abs',SMOProcess='abs',SMFProcess='abs',STRProcess='abs',LBAProcess='abs',LTDProcess='abs',AGDProcess='abs',ABMProcess='abs'
+character(3) :: LAIProcess = 'abs',VWLitProcess='abs',VWCWDProcess='abs'
 !character(3),allocatable :: ProcessArr(:),SelectArr(:),VarNameArr(:)
 character :: sitepatch,ch
 character(2) :: sdum2,s1,s2
-character(20),allocatable :: obsname(:),obsinfo(:),grpname(:),sarray(:)
-character(20),allocatable :: sortedobsname(:),sortedobsinfo(:),sortedgrpname(:)
+character(20),allocatable :: obsname(:),grpname(:),sarray(:)
+character(20),allocatable :: sortedobsname(:),sortedgrpname(:)
+character(26),allocatable :: obsinfo(:), sortedobsinfo(:)
 character(100) :: bpl_sitename,sdum,prevsite
 character(300) :: buffer
 character(6),allocatable :: Qobs_xls_catch(:)
 character(4),allocatable :: smdeps(:)  ! e.g. 0007, 3060 for oznet sm
 type(dmydate) :: ModelStartDate, StartDate, EndDate  ! start, end dates
-type(dmydate) :: CurrentDate,PrevDate,SiteStart,SiteEnd,PreviousDate,LAIDate,ObsDate
+type(dmydate) :: CurrentDate,CurrentMonth,PrevDate,SiteStart,SiteEnd,PreviousDate,LAIDate,LAIDate16,ObsDate
 type(dmydate),allocatable :: Qobs_date(:),Qobs_xls_date(:), timeDMY(:)
-logical :: IncludeArray(4)
-logical :: found, foundp, leapflag, FileExistFlag, lastcurrent, readxls
+logical :: IncludeArray(4),AverageStoreObs=.FALSE.
+logical :: found, foundp,foundc, leapflag, FileExistFlag, lastcurrent, readxls, found_any
 CHARACTER(LEN=10) :: calendar 
 
 ! Read in the user-supplied parameters from a namelist file
 namelist /CompileObservations_Namelist/ OBS_PATH, FILE_NAME, modelres, &
-  POPfile,  &
+  CASAfile,POPfile,  &
   OzFluxSiteFile, CosmOzSiteFile, OzNetSiteFile, OzFluxSMSiteFile, CatchmentFile, LAISiteFile, LAIBinFile, &
   NVISFile, RECCAPFile, ClimateFile, OzFluxRsoSiteFile, &
-  EvTSelect, GPPSelect, NEPSelect, RecSelect, OzFluxRes, LAISelect, &
+  EvTSelect, GPPSelect, NEPSelect, RecSelect, OzFluxRes, LAISelect, LAIbm, &
   VRNPPSelect, VRSoilC0Select, VRPhySelect, VRLitSelect,  &
+  VWLitSelect, VWCWDSelect, &
   EvTProcess, GPPProcess, NEPProcess, RecProcess, LAIProcess, &
   VRNPPProcess, VRSoilC0Process, VRPhyProcess, VRLitProcess,  &
+  VWLitProcess,VWCWDProcess,    &
   RsoSelect, RsoProcess, Rsodm, &
   SMCSelect, SMCProcess, SMCdm, &
   SMOSelect, SMOProcess, SMOdm, &
   SMFSelect, SMFProcess, SMFdm, &
   STRSelect, STRProcess, STRdm, &
+  ABMSelect, ABMProcess, &
   LBAProcess, LTDProcess, AGDProcess, & 
-  LBASelect, LTDSelect, AGDSelect, FILE_NAME, modelres
+  LBASelect, LTDSelect, AGDSelect, &
+  VRPhyfile,AGDfile,CableCasaFile,AverageStoreObs
 
 open (979, file='CompileObservations.nml')
 read (979, nml=CompileObservations_Namelist)
 close (979)
+
+if ((CableCasaFile .ne. 'cable') .and. (CableCasaFile .ne. 'casa')) then
+  write(6,*) '*******************************************************************'
+  write(6,*) 'Invalid value for CableCasaFile from nml file'
+  write(6,*) 'CableCasaFile =',CableCasaFile
+  write(6,*) 'Program stopped'
+  write(6,*) '*******************************************************************'
+  STOP
+endif
+write(6,*) 'File used for output is ',CableCasaFile
 
 write(6,*) 'Variables chosen for inclusion are:'
 if (EvTSelect .ne. 'not') write(6,*) 'EvTSelect is "',EvTSelect,'" with processing "',EvTProcess,'" and time resolution "',OzFluxRes,'"'
@@ -166,7 +210,7 @@ if (GPPSelect .ne. 'not') write(6,*) 'GPPSelect is "',GPPSelect,'" with processi
 if (NEPSelect .ne. 'not') write(6,*) 'NEPSelect is "',NEPSelect,'" with processing "',NEPProcess,'" and time resolution "',OzFluxRes,'"'
 if (RecSelect .ne. 'not') write(6,*) 'RecSelect is "',RecSelect,'" with processing "',RecProcess,'" and time resolution "',OzFluxRes,'"'
 if (RsoSelect .ne. 'not') write(6,*) 'RsoSelect is "',RsoSelect,'" with processing "',RsoProcess,'" and time resolution "',Rsodm,'"'
-if (LAISelect .ne. 'not') write(6,*) 'LAISelect is "',LAISelect,'" with processing "',LAIProcess,'"'
+if (LAISelect .ne. 'not') write(6,*) 'LAISelect is "',LAISelect,'" with processing "',LAIProcess,'" and time resolution "',LAIbm,'"'
 if (SMCSelect .ne. 'not') write(6,*) 'SMCSelect is "',SMCSelect,'" with processing "',SMCProcess,'" and time resolution "',SMCdm,'"'
 if (SMOSelect .ne. 'not') write(6,*) 'SMOSelect is "',SMOSelect,'" with processing "',SMOProcess,'" and time resolution "',SMOdm,'"'
 if (SMFSelect .ne. 'not') write(6,*) 'SMFSelect is "',SMFSelect,'" with processing "',SMFProcess,'" and time resolution "',SMFdm,'"'
@@ -175,9 +219,12 @@ if (VRNPPSelect .ne. 'not') write(6,*) 'VRNPPSelect is "',VRNPPSelect,'" with pr
 if (VRSoilC0Select .ne. 'not') write(6,*) 'VRSoilC0Select is "',VRSoilC0Select,'" with processing "',VRSoilC0Process,'"'
 if (VRPhySelect .ne. 'not') write(6,*) 'VRPhySelect is "',VRPhySelect,'" with processing "',VRPhyProcess,'"'
 if (VRLitSelect .ne. 'not') write(6,*) 'VRLitSelect is "',VRLitSelect,'" with processing "',VRLitProcess,'"'
+if (VWLitSelect .ne. 'not') write(6,*) 'VWLitSelect is "',VWLitSelect,'" with processing "',VWLitProcess,'"'
+if (VWCWDSelect .ne. 'not') write(6,*) 'VWCWDSelect is "',VWCWDSelect,'" with processing "',VWCWDProcess,'"'
 if (LBASelect .ne. 'not') write(6,*) 'LBASelect is "',LBASelect,'" with processing "',LBAProcess,'"'
 if (LTDSelect .ne. 'not') write(6,*) 'LTDSelect is "',LTDSelect,'" with processing "',LTDProcess,'"'
 if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processing "',AGDProcess,'"'
+if (ABMSelect .ne. 'not') write(6,*) 'ABMSelect is "',ABMSelect,'" with processing "',ABMProcess,'"'
 
  ! Check for valiid selection of observation types to include in optimisation
   if (((EvTSelect .ne. 'opt') .and. (EvTSelect .ne. 'com') .and. (EvTSelect .ne. 'not')) .or.   &
@@ -194,8 +241,11 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
       ((VRSoilC0Select .ne. 'opt') .and. (VRSoilC0Select .ne. 'com') .and. (VRSoilC0Select .ne. 'not')) .or.   &
       ((VRPhySelect .ne. 'opt') .and. (VRPhySelect .ne. 'com') .and. (VRPhySelect .ne. 'not')) .or.   &
       ((VRLitSelect .ne. 'opt') .and. (VRLitSelect .ne. 'com') .and. (VRLitSelect .ne. 'not')) .or.   &
+      ((VWLitSelect .ne. 'opt') .and. (VWLitSelect .ne. 'com') .and. (VWLitSelect .ne. 'not')) .or.   &
+      ((VWCWDSelect .ne. 'opt') .and. (VWCWDSelect .ne. 'com') .and. (VWCWDSelect .ne. 'not')) .or.   &
       ((LBASelect .ne. 'opt') .and. (LBASelect .ne. 'com') .and. (LBASelect .ne. 'not')) .or.   &
       ((LTDSelect .ne. 'opt') .and. (LTDSelect .ne. 'com') .and. (LTDSelect .ne. 'not')) .or.   &
+      ((ABMSelect .ne. 'opt') .and. (ABMSelect .ne. 'com') .and. (ABMSelect .ne. 'not')) .or.   &
       ((AGDSelect .ne. 'opt') .and. (AGDSelect .ne. 'com') .and. (AGDSelect .ne. 'not'))) then 
         write(6,*) '*******************************************************************'
         write(6,*) 'Error in selection choices for EvTSelect, GPPSelect, NEPSelect or RecSelect etc'
@@ -207,27 +257,29 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
 
   ! Check for valid selection of processing options
   if ((VRNPPProcess .eq. 'tan') .or. (VRSoilC0Process .eq. 'tan') .or. (VRPhyProcess .eq. 'tan') .or. (VRLitProcess .eq. 'tan') .or.  &
-      (LBAProcess .eq. 'tan') .or. (LTDProcess .eq. 'tan') .or. (AGDProcess .eq. 'tan')) then
+      (VWLitProcess .eq. 'tan') .or. (VWCWDProcess .eq. 'tan') .or. &
+      (LBAProcess .eq. 'tan') .or. (LTDProcess .eq. 'tan') .or. (AGDProcess .eq. 'tan') .or. (ABMProcess .eq. 'tan')) then
         write(6,*) '*******************************************************************'
         write(6,*) 'Error in processing choices for some run-averaged variables, cannot be temporal average (tan)'
-        write(6,*) 'VRNPPProcess, VRSoilC0Process, VRPhyProcess, VRLitProcess, LBAProcess, LTDProcess, AGDProcess ='
-        write(6,*) VRNPPProcess,' ',VRSoilC0Process,' ',VRPhyProcess,' ',VRLitProcess,' ',LBAProcess,' ',LTDProcess,' ',AGDProcess
+        write(6,*) 'VRNPPProcess, VRSoilC0Process, VRPhyProcess, VRLitProcess, VWLitProcess, VWCWDProcess, LBAProcess, LTDProcess, AGDProcess, ABMProcess ='
+        write(6,*) VRNPPProcess,' ',VRSoilC0Process,' ',VRPhyProcess,' ',VRLitProcess,' ',VWLitProcess,' ',VWCWDProcess,' ',LBAProcess,' ',LTDProcess,' ',AGDProcess,' ',ABMProcess
         write(6,*) 'Program stopped'
         write(6,*) '*******************************************************************'
         STOP
   endif
 
-! First read a model output netcdf file to get time range and gridcell locations
-  ! NOW INPUT FORM NAMELIST
-  ! Open netcdf file to read variables
-  !FILE_NAME = "/flush1/tru034/CABLE/mdf/Ozmdf/plume_out_cable_2000_2016.nc"
-  !FILE_NAME = "/flush1/tru034/PEST/PEST1/CABLE1/plume_out_cable.nc"
-  !FILE_NAME = "/flush1/tru034/CABLE/mdf_test/bios_out_cable_2000_2016.nc"
-  !modelres = 0.05
-  !FILE_NAME = "/flush1/tru034/CABLE/mdf_test_global/plume_out_cable_2000_2016.nc"
-  !modelres = 0.5
+  ! Check that if casa file is selected, all obs types will work
+  if ((CableCasaFile .eq. 'casa') .and. ((EvTSelect .ne. 'not') .or. (GPPSelect .ne. 'not') .or. (SMCSelect .ne. 'not') .or. (NEPSelect .ne. 'not') .or. &
+      (RecSelect .ne. 'not') .or. (RsoSelect .ne. 'not') .or. (LAISelect .ne. 'not') .or. (SMOSelect .ne. 'not') .or. (SMFSelect .ne. 'not') .or. & 
+      (STRSelect .ne. 'not') .or. (VRNPPSelect .ne. 'not'))) then
+    write(6,*) '*******************************************************************' 
+    write(6,*) 'CableCasaFile indicates to use CASA file, but not set up for current selection of obs types'
+    write(6,*) 'Program stopped'
+    write(6,*) '*******************************************************************'
+    STOP
+  endif
 
-  write(6,*) 'Open model output file ', TRIM(FILE_NAME)
+  write(6,*) 'Open CABLE model output file ', TRIM(FILE_NAME)
   STATUS = NF90_OPEN( TRIM(FILE_NAME), NF90_NOWRITE, FILE_ID )
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
 
@@ -236,6 +288,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
   STATUS = NF90_INQUIRE_DIMENSION( FILE_ID, dID, LEN=time_dim )
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+  if (time_dim .eq. 0) then 
+    write(6,*) '*******************************************************************'
+    write(6,*) 'time_dim = 0 in cable file, check that run completed properly'
+    write(6,*) 'Program stopped'
+    write(6,*) '*******************************************************************'
+    STOP
+  endif
 
   STATUS = NF90_INQ_DIMID( FILE_ID, 'land', dID )
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
@@ -270,14 +329,14 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
   STATUS = NF90_GET_VAR( FILE_ID, VARID, local_lat )
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-  write(6,*) 'latitude=',local_lat
+  !write(6,*) 'latitude=',local_lat
 
   allocate(local_lon(land_dim))
   STATUS = NF90_INQ_VARID( FILE_ID, 'local_lon', VARID )
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
   STATUS = NF90_GET_VAR( FILE_ID, VARID, local_lon )
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-  write(6,*) 'longitude=',local_lon
+  !write(6,*) 'longitude=',local_lon
 
   ! Read patchfrac
   allocate(patchfrac(land_dim,patch_dim))
@@ -324,6 +383,24 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   STATUS = NF90_GET_ATT( FILE_ID, nf90_global, 'Output_averaging', output_averaging )
   IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
   write(6,*) 'Output averaging is ',output_averaging
+
+  ! Check for choices of daily or 2-weekly obs but monthly model output'
+  if ((output_averaging .eq. 'monthly') .and. (((STRSelect .ne. 'not') .and. (STRdm .eq. 'day')) .or. ((SMCSelect .ne. 'not') .and. (SMCdm .eq. 'day')) .or.  &
+              ((SMOSelect .ne. 'not') .and. (SMOdm .eq. 'day')) .or. ((SMFSelect .ne. 'not') .and. (SMFdm .eq. 'day')) .or. ((LAISelect .ne. 'not') .and. (LAIbm .eq. 'biw')))) then 
+    write(6,*) '*******************************************************************'
+    write(6,*) 'ERROR: Model output is monthly, but some observation types are '
+    write(6,*) '  selected to be sub-monthly:'
+    if (STRSelect .ne. 'not') write(6,*) 'STRdm = ',STRdm
+    if (SMCSelect .ne. 'not') write(6,*) 'SMCdm = ',SMCdm
+    if (SMOSelect .ne. 'not') write(6,*) 'SMOdm = ',SMOdm
+    if (SMFSelect .ne. 'not') write(6,*) 'SMFdm = ',SMFdm
+    if (LAISelect .ne. 'not') write(6,*) 'LAIbm = ',LAIbm
+    write(6,*) 'Either change model output to daily, or choose to use monthly means of obs'
+    write(6,*) 'PROGRAM STOPPED'
+    write(6,*) '*******************************************************************'
+    STOP
+  endif
+
 
   ! Read soil layer thicknesses, calculate depths, give information for soil moisture obs
   if ((SMCSelect .ne. 'not') .or. (SMOSelect .ne. 'not') .or. (SMFSelect .ne. 'not')) then
@@ -407,7 +484,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   endif
   write(6,201) StartDate%Year,StartDate%Month,StartDate%Day,EndDate%Year,EndDate%Month,EndDate%Day
 201 format('Model output is available between ',i4,'-',i2,'-',i2,' and ',i4,'-',i2,'-',i2)
-  if ((output_averaging .eq. 'Monthly') .and. (EndDate%Month .ne. 12) .and. (EndDate%Day .ne. 16)) then
+  if ((output_averaging .eq. 'monthly') .and. (EndDate%Month .ne. 12) .and. (EndDate%Day .ne. 16)) then
     write(6,*) '*******************************************************************'
     write(6,*) 'Calculated EndDate not mid-December, check whether have correct leap year flag for driving met'
     write(6,*) 'Program stopped'
@@ -417,77 +494,77 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
 
   ! Check that required model variables are written to netcdf file by CABLE
   ! Variables required are Evap, GPP, NEE, AutoResp+HeteroResp, SoilMoist, above-ground drymass
-  if (EvTSelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'Evap', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'ET is output by the model, VARID= ',VARID
-  endif
-  if (GPPSelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'GPP', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'GPP is output by the model, VARID= ',VARID
-  endif
-  if (NEPSelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'NEE', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'NEE is output by the model, VARID= ',VARID
-  endif
-  if (RecSelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'AutoResp', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    STATUS = NF90_INQ_VARID( FILE_ID, 'HeteroResp', VARID2 )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'AutoResp and HeteroResp are output by the model, VARID= ',VARID,VARID2
-  endif
-  if (RsoSelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'HeteroResp', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    STATUS = NF90_INQ_VARID( FILE_ID, 'RootResp', VARID2 )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'HeteroResp and RootResp are output by the model, VARID= ',VARID,VARID2
-  endif
-  if (LAISelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'LAI', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'LAI is output by the model, VARID= ',VARID
-  endif
-  if ((SMCSelect .ne. 'not') .or. (SMOSelect .ne. 'not') .or. (SMFSelect .ne. 'not')) then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'SoilMoist', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'SoilMoist is output by the model, VARID= ',VARID
-  endif
-  if (AGDSelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'TotLivBiomass', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'TotLivBiomass is output by the model, VARID= ',VARID
-  endif
-  if (STRSelect .ne. 'not') then
-    STATUS = NF90_INQ_VARID( FILE_ID, 'Qs', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'Surface runoff is output by the model, VARID= ',VARID
-    STATUS = NF90_INQ_VARID( FILE_ID, 'Qsb', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'Deep runoff is output by the model, VARID= ',VARID
-    ! Later calculate run-averaged precip to write to file with streamflow info
-    allocate(Rainf(land_dim,patch_dim,time_dim))
-    STATUS = NF90_INQ_VARID( FILE_ID, 'Rainf', VARID )
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    write(6,*) 'Rainfall is output by the model, VARID= ',VARID
-    STATUS = NF90_GET_VAR( FILE_ID, VARID, Rainf)
-    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
-    Rainf = Rainf*60.0*60.0*24.0    ! convert precip kg/m2/s = mm/s to mm/d
-
-    ! Calculate date for all model times, used in checking date for precip ave
-    allocate(timeDMY(time_dim))
-    do i = 1, time_dim
-      time_days(i) = time(i)/(3600*24)
-      if (LeapFlag) then
-        timeDMY(i) = AddDay(ModelStartDate,time_days(i))
-      else
-        timeDMY(i) = AddDayNoLeap(ModelStartDate,time_days(i))
-      endif
-  enddo
-
+  if (CableCasaFile .eq. 'cable') then
+    if (EvTSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'Evap', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'ET is output by the model, VARID= ',VARID
+    endif
+    if (GPPSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'GPP', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'GPP is output by the model, VARID= ',VARID
+    endif
+    if (NEPSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'NEE', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'NEE is output by the model, VARID= ',VARID
+    endif
+    if (RecSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'AutoResp', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      STATUS = NF90_INQ_VARID( FILE_ID, 'HeteroResp', VARID2 )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'AutoResp and HeteroResp are output by the model, VARID= ',VARID,VARID2
+    endif
+    if (RsoSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'HeteroResp', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      STATUS = NF90_INQ_VARID( FILE_ID, 'RootResp', VARID2 )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'HeteroResp and RootResp are output by the model, VARID= ',VARID,VARID2
+    endif
+    if (LAISelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'LAI', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'LAI is output by the model, VARID= ',VARID
+    endif
+    if ((SMCSelect .ne. 'not') .or. (SMOSelect .ne. 'not') .or. (SMFSelect .ne. 'not')) then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'SoilMoist', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'SoilMoist is output by the model, VARID= ',VARID
+    endif
+    if (AGDSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'TotLivBiomass', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'TotLivBiomass is output by the model, VARID= ',VARID
+    endif
+    if (STRSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( FILE_ID, 'Qs', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'Surface runoff is output by the model, VARID= ',VARID
+      STATUS = NF90_INQ_VARID( FILE_ID, 'Qsb', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'Deep runoff is output by the model, VARID= ',VARID
+      ! Later calculate run-averaged precip to write to file with streamflow info
+      allocate(Rainf(land_dim,patch_dim,time_dim))
+      STATUS = NF90_INQ_VARID( FILE_ID, 'Rainf', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'Rainfall is output by the model, VARID= ',VARID
+      STATUS = NF90_GET_VAR( FILE_ID, VARID, Rainf)
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      Rainf = Rainf*60.0*60.0*24.0    ! convert precip kg/m2/s = mm/s to mm/d
+      ! Calculate date for all model times, used in checking date for precip ave
+      allocate(timeDMY(time_dim))
+      do i = 1, time_dim
+        time_days(i) = time(i)/(3600*24)
+        if (LeapFlag) then
+          timeDMY(i) = AddDay(ModelStartDate,time_days(i))
+        else
+          timeDMY(i) = AddDayNoLeap(ModelStartDate,time_days(i))
+        endif
+      enddo
+    endif
   endif
 
 
@@ -530,7 +607,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
     iveg(:) = 0
   else
     write(6,*) 'Read climate file to find out biomes'
-    write(6,*) 'Climate file is ',ClimateFile
+    write(6,*) 'Climate file is ',trim(ClimateFile)
     STATUS = NF90_OPEN( TRIM(ClimateFile), NF90_NOWRITE, CLIMATE_FILE_ID )
     IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
     STATUS = NF90_INQ_VARID( CLIMATE_FILE_ID, 'biome', VARID )
@@ -543,6 +620,53 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
     STATUS = NF90_GET_VAR( CLIMATE_FILE_ID, VARID, iveg )
     IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
   endif
+
+  ! Read CASA file
+  if (trim(CASAFile) .eq. 'nil') then
+    write(6,*) 'No CASA file read'
+    if (CableCasaFile .eq. 'casa') then
+      write(6,*) '*****************************************************************'
+      write(6,*) 'ERROR: CASA file not specified, but CableCasaFile indicates use of CASA file'
+      write(6,*) 'Program stopped'
+      write(6,*) '*****************************************************************'
+      STOP
+    endif
+  else
+    write(6,*) 'Read CASA file',trim(CASAfile)
+    STATUS = NF90_OPEN( TRIM(CASAFile), NF90_NOWRITE, CASA_FILE_ID )
+    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+    STATUS = NF90_INQ_DIMID( CASA_FILE_ID, 'land', dID )
+    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+    STATUS = NF90_INQUIRE_DIMENSION( CASA_FILE_ID, dID, LEN=casa_land_dim )
+    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+    allocate(casa_lat(casa_land_dim))
+    allocate(casa_lon(casa_land_dim))
+    STATUS = NF90_INQ_VARID( CASA_FILE_ID, 'latitude', VARID )
+    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+    STATUS = NF90_GET_VAR( CASA_FILE_ID, VARID, casa_lat )
+    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+    STATUS = NF90_INQ_VARID( CASA_FILE_ID, 'longitude', VARID )
+    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+    STATUS = NF90_GET_VAR( CASA_FILE_ID, VARID, casa_lon )
+    IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+    write(6,*) 'CASA latitude and longitude read to allow checking'
+    write(6,*) 'casa_lat = ',casa_lat
+    write(6,*) 'casa_lon = ',casa_lon
+    if (ABMSelect .ne. 'not') then
+      STATUS = NF90_INQ_VARID( CASA_FILE_ID, 'cplant', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'cplant is output by the model (CASA output), VARID= ',VARID
+    endif
+    if (VRSoilC0Select .ne. 'not') then
+      STATUS = NF90_INQ_VARID( CASA_FILE_ID, 'csoil', VARID )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      STATUS = NF90_INQ_VARID( CASA_FILE_ID, 'clitter', VARID2 )
+      IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
+      write(6,*) 'csoil and clitter are output by the model (CASA output), VARID= ',VARID,VARID2
+    endif
+    write(6,*) 'CASA file read successfully'
+  endif
+
   ! Read pop_land_dim, latitude and longitude from pop ini file
   if (trim(POPFile) .eq. 'nil') then
     write(6,*) 'No POP file read'
@@ -555,6 +679,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
       STOP
     endif
   else
+    write(6,*) 'Read POP file ',trim(POPfile)
     STATUS = NF90_OPEN( TRIM(POPFile), NF90_NOWRITE, POP_FILE_ID )
     IF (STATUS /= NF90_noerr) CALL handle_err(STATUS)
     STATUS = NF90_INQ_DIMID( POP_FILE_ID, 'land', dID )
@@ -617,9 +742,10 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
     read(21,*) nsites
     read(21,*)
     do i = 1, nsites
-      read(21,*) sitecode, sitename, mmstart, yystart, mmend, yyend,sitelat,sitelon,sitepatch
+      read(21,*) sitecode, sitename, mmstart, yystart, mmend, yyend,sitelat,sitelon,sitepatch,OzFluxProc
       write(6,*) 'OzFlux site ',trim(sitecode), ' =  ',trim(sitename)
       write(6,*) mmstart, yystart, mmend, yyend,sitelat,sitelon,trim(sitepatch)
+      write(6,*) 'OzFlux CO2 flux processing = ',OzFluxProc
       ! Find index of corresponding gridcell
       found = .false.
       do j = 1,land_dim
@@ -660,7 +786,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
       if (OzFluxRes .eq. 'day') tres = 'Daily'
       if (OzFluxRes .eq. 'hou') tres = 'Hourly'
       if (OzFluxRes .eq. 'hho') tres = 'HalfHourly'
-      flnm = trim(OBS_PATH) // 'OzFlux/' // trim(sitename)//'_'//trim(tres)//'.csv'
+      flnm = trim(OBS_PATH) // 'OzFlux/' // trim(sitename)//'_'//trim(tres)//'_'//trim(OzFluxProc)//'.csv'
       write(6,*) 'Read OzFlux file ',trim(flnm)
       open(unit=22,file=flnm,status='OLD',iostat=iostat)
       if (iostat .ne. 0) then
@@ -699,8 +825,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             if (OzFluxRes .eq. 'day') obsname(countobs) = 'GPP'//trim(sitecode)//'D'//int2str4(yy)//int2str2(mm)//int2str2(dd) 
             if (OzFluxRes .eq. 'hou') obsname(countobs) = 'GPP'//trim(sitecode)//'H'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)
             if (OzFluxRes .eq. 'hho') obsname(countobs) = 'GPP'//trim(sitecode)//'F'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)//int2str2(ff) 
-            obsinfo(countobs) = trim(GPPProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(GPPProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(GPPProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = GPP
             if (GPPSelect .eq. 'opt') then
               weight(countobs) = rangeweight
@@ -718,8 +849,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             if (OzFluxRes .eq. 'day') obsname(countobs) = 'NEP'//trim(sitecode)//'D'//int2str4(yy)//int2str2(mm)//int2str2(dd)
             if (OzFluxRes .eq. 'hou') obsname(countobs) = 'NEP'//trim(sitecode)//'H'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)
             if (OzFluxRes .eq. 'hho') obsname(countobs) = 'NEP'//trim(sitecode)//'F'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)//int2str2(ff)
-            obsinfo(countobs) = trim(NEPProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(NEPProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(NEPProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = NEP
             if (NEPSelect .eq. 'opt') then
               weight(countobs) = rangeweight
@@ -737,8 +873,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             if (OzFluxRes .eq. 'day') obsname(countobs) = 'EvT'//trim(sitecode)//'D'//int2str4(yy)//int2str2(mm)//int2str2(dd)
             if (OzFluxRes .eq. 'hou') obsname(countobs) = 'EvT'//trim(sitecode)//'H'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)
             if (OzFluxRes .eq. 'hho') obsname(countobs) = 'EvT'//trim(sitecode)//'F'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)//int2str2(ff)
-            obsinfo(countobs) = trim(EvTProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(EvTProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(EvTProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             if ((OzFluxRes .eq. 'mon') .or. (OzFluxRes .eq. 'day')) obs(countobs) = evap/60.0/60.0/24.0*1000.0   ! obs in m/d, convert to mm/s like model
             if (OzFluxRes .eq. 'hou') obs(countobs) = evap/60.0/60.0   ! obs in mm/hour, convert to mm/s like model
             if (OzFluxRes .eq. 'hho') obs(countobs) = evap/60.0/30.0   ! obs in mm/30mins, convert to mm/s like model
@@ -758,8 +899,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             if (OzFluxRes .eq. 'day') obsname(countobs) = 'Rec'//trim(sitecode)//'D'//int2str4(yy)//int2str2(mm)//int2str2(dd)
             if (OzFluxRes .eq. 'hou') obsname(countobs) = 'Rec'//trim(sitecode)//'H'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)            
             if (OzFluxRes .eq. 'hho') obsname(countobs) = 'Rec'//trim(sitecode)//'F'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)//int2str2(ff)
-            obsinfo(countobs) = trim(RecProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(RecProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(RecProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = Reco
             if (RecSelect .eq. 'opt') then
               weight(countobs) = rangeweight
@@ -889,8 +1035,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             if (Rsodm .eq. 'mon') obsname(countobs) = 'Rso'//trim(sitecode)//'M'//int2str4(yy)//int2str2(mm)
             if (Rsodm .eq. 'day') obsname(countobs) = 'Rso'//trim(sitecode)//'D'//int2str4(yy)//int2str2(mm)//int2str2(dd)
             if (Rsodm .eq. 'hho') obsname(countobs) = 'Rso'//trim(sitecode)//'F'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)//int2str2(ff)
-            obsinfo(countobs) = trim(RsoProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(RsoProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(RsoProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = Rsoil
             if (RsoSelect .eq. 'opt') then
               weight(countobs) = rangeweight
@@ -925,6 +1076,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
 
     write(6,*) 'LAI observations'
     allocate(lai(land_dim))
+    allocate(lai16(land_dim))
     ! Read file of lats and lons where LAI will be compared with model
     open(unit=21,file=trim(LAISiteFile),status='old',iostat=iostat)
     if (iostat .ne. 0) then
@@ -937,8 +1089,8 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
     read(21,*) nsites
     read(21,*)
     do i = 1, nsites
-      read(21,*) sitecode, sitename, mmstart, yystart, mmend, yyend,sitelat,sitelon,sitepatch
-      write(6,*) sitecode, sitename, mmstart, yystart, mmend, yyend,sitelat,sitelon,sitepatch
+      read(21,*) sitecode, mmstart, yystart, mmend, yyend,sitelat,sitelon
+      write(6,*) sitecode, mmstart, yystart, mmend, yyend,sitelat,sitelon
       SiteStart%Day = 1
       SiteStart%Month = mmstart
       SiteStart%Year = yystart
@@ -968,19 +1120,20 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
         STOP
       endif
       ! Check patch info is valid
-      write(6,*) 'sitepatch, patchfrac=',sitepatch, patchfrac(jland,:)
-      if ((sitepatch .eq. '1') .or. (sitepatch .eq. '3')) then
-        read(sitepatch,*) ipatch
-        if ((patchfrac(jland,ipatch) .eq. 0.0) .or. (patchfrac(jland,ipatch) .eq. patchfill) .or. (patchfrac(jland,ipatch) .eq. patchmissing)) then
-          write(6,*) '*******************************************************************'
-          write(6,*) 'ERROR: zero or missing patchfrac for patch specified for OzFlux site',sitename
-          write(6,*) 'Patch for site is ',sitepatch
-          write(6,*) 'patchfrac = ',patchfrac(jland,:)
-          write(6,*) 'Program stopped'
-          write(6,*) '*******************************************************************'
-          STOP
-        endif
-      endif
+    !  write(6,*) 'sitepatch, patchfrac=',sitepatch, patchfrac(jland,:)
+    !  if ((sitepatch .eq. '1') .or. (sitepatch .eq. '3')) then
+    !    read(sitepatch,*) ipatch
+    !    if ((patchfrac(jland,ipatch) .eq. 0.0) .or. (patchfrac(jland,ipatch) .eq. patchfill) .or. (patchfrac(jland,ipatch) .eq. patchmissing)) then
+    !      write(6,*) '*******************************************************************'
+    !      write(6,*) 'ERROR: zero or missing patchfrac for patch specified for OzFlux site',sitename
+    !      write(6,*) 'Patch for site is ',sitepatch
+    !      write(6,*) 'patchfrac = ',patchfrac(jland,:)
+    !      write(6,*) 'Program stopped'
+    !      write(6,*) '*******************************************************************'
+    !      STOP
+    !    endif
+    !  endif
+      sitepatch = 'a'  ! patch average for LAI
       ! Read LAI bin file
       flnm = trim(LAIBinFile) 
       write(6,*) 'Reading LAI bin file ',trim(flnm)
@@ -1004,11 +1157,16 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             rangeweight = 1.0  ! within time range given for optimisation
             sitecount = sitecount + 1 ! counting number of obs for each site within time range to calculate obs weight
           endif  
-          if (LAISelect .ne. 'not') then
+          if (LAIbm .eq. 'biw') then
             countobs = countobs + 1
             obsname(countobs) = 'LAI'//trim(sitecode)//'B'//int2str4(LAIDate%Year)//int2str2(LAIDate%Month)//int2str2(LAIDate%Day) 
-            obsinfo(countobs) = trim(LAIProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(LAIProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(LAIProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = LAI(jland)
             if (LAISelect .eq. 'opt') then
               weight(countobs) = rangeweight
@@ -1020,6 +1178,50 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             obstype(countobs) = 'LAI'
             obs_proc(countobs) = trim(LAIProcess)
 !            write(6,*) countobs,obsname(countobs),obsinfo(countobs),obs(countobs),weight(countobs)
+          endif
+          if (LAIbm .eq. 'mon') then ! data come on the 1st and 16th of month - average them
+            if (LAIDate.Day .ne. 1) then
+              read(22,end=202) LAIDate,LAI  ! 1st value may have been missing, so read again to look for next month 1st value
+              if (LAIDate.Day .ne. 1) then
+                write(6,*) '*******************************************************************'
+                write(6,*) 'Problem reading LAI obs - starts mid month',LAIDate
+                write(6,*) 'Program stopped'
+                write(6,*) '*******************************************************************'
+                STOP
+              endif
+            endif
+            read(22,end=202) LAIDate16,LAI16  ! Read LAI from 16th of month
+            if ((LAIDate.Month .ne. LAIDate16.Month) .or. (LAIDate.Year .ne. LAIDate16.Year)) then
+              write(6,*) '*******************************************************************'
+              write(6,*) 'Problem reading LAI obs - expecting data from 1st and 16th of month'
+              write(6,*) LAIDate
+              write(6,*) LAIDate16
+              write(6,*) 'Program stopped'
+              write(6,*) '*******************************************************************'
+              STOP
+            endif
+            if ((LAI(jland) .gt. -998.0) .and. (LAI16(jland) .gt. -998.0)) then  ! both biweekly values are valid, calculate mean
+              countobs = countobs + 1
+              obsname(countobs) = 'LAI'//trim(sitecode)//'M'//int2str4(LAIDate%Year)//int2str2(LAIDate%Month)
+              if (biome(jland) .ne. 0) then
+                obsinfo(countobs) = trim(LAIProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                    //'R'//int2str1(ifix(reccap(jland)))
+              else
+                obsinfo(countobs) = trim(LAIProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                    //'R'//int2str1(ifix(reccap(jland)))
+              endif
+              obs(countobs) = 0.5*(LAI(jland)+LAI16(jland))
+              if (LAISelect .eq. 'opt') then
+                weight(countobs) = rangeweight
+              else
+                weight(countobs) = 0.0
+              endif
+              grpname(countobs) = 'lai'
+              obssitename(countobs) = trim(sitecode)
+              obstype(countobs) = 'LAI'
+              obs_proc(countobs) = trim(LAIProcess)
+            !  write(6,*) countobs,obsname(countobs),obsinfo(countobs),obs(countobs),weight(countobs)
+            endif
           endif
         endif
       end do
@@ -1033,6 +1235,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
       write(6,*) 'Finished site ',sitecode
     end do
     close(21)
+    deallocate(lai,lai16)
     write(6,*) 'Finished variable LAI'
     write(6,*) ' '
   endif  ! LAI observations
@@ -1052,6 +1255,8 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
     endif
     read(217,*)
     read(217,*)
+    nsoilobs = 0
+    found_any = .false.
     do
       read(217,*,end=218) vr_lat,vr_lon,vr_sitenum,vr_NPP,vr_agphyto,vr_aglitter,vr_soilC0,vr_precip,vr_flag
       if ((vr_flag .eq. 1) .or. (vr_flag .eq. 2)) then   ! 1 for weight=1, 2 for weight=0 but include, 0 for don't include 
@@ -1065,15 +1270,19 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
           endif
           if (found) exit
         end do
-        if (.not.(found)) then
-          write(6,*) 'Did not find model gridcell corresponding to observation ',vr_sitenum, vr_lat,vr_lon
-        else
+        if (found) then
+          found_any = .true.
           write(vr_siteID,'(I0.4)') vr_sitenum   ! convert integer site code to 4-char string
           if ((vr_NPP .ne. -9999) .and. (VRNPPSelect .ne. 'not')) then
             countobs = countobs + 1
             obsname(countobs) = 'NPP'//trim(vr_siteID)//'R'
-            obsinfo(countobs) = trim(VRNPPProcess)//int2str4(jland)//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(VRNPPProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'Pp'//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(VRNPPProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'Pp'//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = vr_NPP
             if (vr_flag .eq. 2) then 
               weight(countobs) = 0
@@ -1088,8 +1297,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
           if ((vr_agphyto .ne. -9999) .and. (VRPhySelect .ne. 'not')) then
             countobs = countobs + 1
             obsname(countobs) = 'Phy'//trim(vr_siteID)//'R'
-            obsinfo(countobs) = trim(VRPhyProcess)//int2str4(jland)//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(VRPhyProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'Pp'//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(VRPhyProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = vr_agphyto
             if (vr_flag .eq. 2) then
               weight(countobs) = 0
@@ -1104,8 +1318,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
           if ((vr_aglitter .ne. -9999) .and. (VRLitSelect .ne. 'not')) then
             countobs = countobs + 1
             obsname(countobs) = 'Lit'//trim(vr_siteID)//'R'
-            obsinfo(countobs) = trim(VRLitProcess)//int2str4(jland)//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(VRLitProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(VRLitProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = vr_aglitter
             if (vr_flag .eq. 2) then
               weight(countobs) = 0
@@ -1118,10 +1337,16 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             obs_proc(countobs) = trim(VRLitProcess)
           endif
           if ((vr_SoilC0 .ne. -9999) .and. (VRSoilC0Select .ne. 'not')) then
+            nsoilobs = nsoilobs + 1
             countobs = countobs + 1
             obsname(countobs) = 'SC0'//trim(vr_siteID)//'R'
-            obsinfo(countobs) = trim(VRSoilC0Process)//int2str4(jland)//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(VRSoilC0Process)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(VRSoilC0Process)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = vr_SoilC0
             if (vr_flag .eq. 2) then
               weight(countobs) = 0
@@ -1137,8 +1362,248 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
       endif
     end do
     write(6,*) 'Finished VAST_Raison measurements'
+    if (.not.(found_any)) write(6,*) 'No measurements found in current domain'
     write(6,*) ' '
 218 continue  
+    close(217)
+  endif
+!------------------------------------------------------------------------------------------------------------------
+!  Volkova-Weston fine litter measurements (only include if in mask)
+  if (VWLitSelect .ne. 'not') then
+    write(6,*) ' Volkova-Weston fine litter measurements:'
+    flnm = trim(OBS_PATH) // 'VW/' // 'fine_litter_VW.dat'
+    write(6,*) 'Read file ',flnm
+    open(unit=217,file=flnm,iostat=iostat)
+    if (iostat .ne. 0) then
+      write(6,*) '*******************************************************************'
+      write(6,*) 'Missing Volkova-Weston file',trim(flnm)
+      write(6,*) 'Program stopped'
+      write(6,*) '*******************************************************************'
+      STOP
+    endif
+    read(217,*)
+    sitecount = 0
+    found_any = .false.
+    if (AverageStoreObs) then
+      write(6,*) '  - average multiple observations within a gridcell'
+      prevsite = 'dum'
+      prevlat = 90.0
+      prevlon = 0.0
+      allocate(Msum(land_dim))
+      allocate(Mcount(land_dim))
+      Msum(:) = 0.0
+      Mcount(:) = 0
+      found_any = .false.
+      ! Loop over obs file, reading and adding to running sums if in domain
+      do
+        read(217,*,end=224) vw_lon,vw_lat,vw_fine_lit
+        ! Find cable index of corresponding gridcell
+        found = .false.
+        do j = 1,land_dim
+          if ((abs(vw_lat-local_lat(j)) .le. modelres/2.0) .and. (abs(vw_lon-local_lon(j)) .le. modelres/2.0)) then
+            jland = j
+            found = .true.
+            if (biome(jland) .ne. 0) then
+              write(6,*) 'VW fine litter obs at ',vw_lat,' ',vw_lon,' is in model gridcell ',jland,' with biome ',biome(jland),' and NVIS=',nvis(jland)
+              write(6,*) 'frac=',BiomeForestFrac(biome(jland))
+            else
+              write(6,'(a,f10.5,a,f10.5,a,i3,a,i3)') 'VW fine litter obs ',vw_lat,' ',vw_lon,' is in model gridcell ',jland,' with NVIS=',ifix(nvis(jland))
+            endif
+          endif
+          if (found) exit
+        enddo
+        if (found) then  ! increment running totals
+          found_any = .true.
+          Msum(jland) = Msum(jland) + vw_fine_lit
+          Mcount(jland) = Mcount(jland) + 1
+        endif
+      enddo ! loop over lines in MVW fine litter obs datafile
+  224 continue
+      write(6,*) 'Finished reading VW fine litter file, now calculate averages'
+      close(217)
+      do jland = 1,land_dim
+        if (Mcount(jland) .gt. 0) then
+          vw_fine_lit = Msum(jland)/Mcount(jland)
+          sitecount = sitecount + 1  ! for sitename in PEST
+          write(vw_siteID,'(I0.4)') sitecount   ! convert sitecount to 4-char string
+          countobs = countobs + 1
+          obsname(countobs) = 'FLW'//trim(vw_siteID)//'R'
+          if (biome(jland) .ne. 0) then
+            obsinfo(countobs) = trim(VWLitProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))//'C'//int2str2(Mcount(jland))
+          else
+            obsinfo(countobs) = trim(VWLitProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))//'C'//int2str2(Mcount(jland))
+          endif
+          obs(countobs) = 0.5 * vw_fine_lit  ! convert from tDM/ha to tC/ha
+          weight(countobs) = 1.0
+          grpname(countobs) = 'vwlit'
+          obssitename(countobs) = trim(vw_siteID)
+          obstype(countobs) = 'FLW'
+          obs_proc(countobs) = trim(VWLitProcess)
+          write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+        endif  ! at least one observation in this gridcell, average calculated
+      end do  ! loop over gridcells
+    else
+      write(6,*) '  - multiple observations within a gridcell treated separately'
+      do
+        sitecount = sitecount + 1
+        read(217,*,end=222) vw_lon,vw_lat,vw_fine_lit
+        ! Find index of corresponding gridcell
+        found = .false.
+        do j = 1,land_dim
+          if ((abs(vw_lat-local_lat(j)) .le. modelres/2.0) .and. (abs(vw_lon-local_lon(j)) .le. modelres/2.0)) then
+            jland = j
+            found = .true.
+            write(6,*) 'Gridcell is ',j
+          endif
+          if (found) exit
+        end do
+        if (found) then
+          found_any = .true.
+          write(vw_siteID,'(I0.4)') sitecount   ! use obs number in file as site name for PEST, convert to 4-char string
+          countobs = countobs + 1
+          obsname(countobs) = 'FLW'//trim(vw_siteID)//'R'
+          if (biome(jland) .ne. 0) then
+            obsinfo(countobs) = trim(VWLitProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                //'R'//int2str1(ifix(reccap(jland)))
+          else
+            obsinfo(countobs) = trim(VWLitProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                //'R'//int2str1(ifix(reccap(jland)))
+          endif
+          obs(countobs) = 0.5 * vw_fine_lit  ! convert from tDM/ha to tC/ha
+          weight(countobs) = 1
+          grpname(countobs) = 'vwlit'
+          obssitename(countobs) = trim(vw_siteID)
+          obstype(countobs) = 'FLW'
+          obs_proc(countobs) = trim(VWLitProcess)
+          write(6,*)  vw_lat,' ',vw_lon,' ',vw_fine_lit,' ',obsname(countobs),' ',obsinfo(countobs)
+        endif
+      end do
+    endif
+    write(6,*) 'Finished Volkova-Weston fine litter measurements'
+    if (.not.(found_any)) write(6,*) 'No measurements found in current domain'
+    write(6,*) ' '
+222 continue  
+    close(217)
+  endif
+!------------------------------------------------------------------------------------------------------------------
+!  Volkova-Weston coarse woody debris measurements (only include if in mask)
+  if (VWCWDSelect .ne. 'not') then
+    write(6,*) ' Volkova-Weston coarse woody debris measurements:'
+    flnm = trim(OBS_PATH) // 'VW/' // 'CWD_VW.dat'
+    write(6,*) 'Read file ',flnm
+    open(unit=217,file=flnm,iostat=iostat)
+    if (iostat .ne. 0) then
+      write(6,*) '*******************************************************************'
+      write(6,*) 'Missing Volkova-Weston file',trim(flnm)
+      write(6,*) 'Program stopped'
+      write(6,*) '*******************************************************************'
+      STOP
+    endif
+    read(217,*)
+    sitecount = 0
+    if (AverageStoreObs) then
+      write(6,*) '  - average multiple observations within a gridcell'
+      prevsite = 'dum'
+      prevlat = 90.0
+      prevlon = 0.0
+      Msum(:) = 0.0
+      Mcount(:) = 0
+      found_any = .false.
+      ! Loop over obs file, reading and adding to running sums if in domain
+      do
+        read(217,*,end=225) vw_lon,vw_lat,vw_CWD
+        ! Find cable index of corresponding gridcell
+        found = .false.
+        do j = 1,land_dim
+          if ((abs(vw_lat-local_lat(j)) .le. modelres/2.0) .and. (abs(vw_lon-local_lon(j)) .le. modelres/2.0)) then
+            jland = j
+            found = .true.
+            if (biome(jland) .ne. 0) then
+              write(6,*) 'VW CWD obs at ',vw_lat,' ',vw_lon,' is in model gridcell ',jland,' with biome ',biome(jland),' and NVIS=',nvis(jland)
+              write(6,*) 'frac=',BiomeForestFrac(biome(jland))
+            else
+              write(6,'(a,f10.5,a,f10.5,a,i3,a,i3)') 'VW CWD obs ',vw_lat,' ',vw_lon,' is in model gridcell ',jland,' with NVIS=',ifix(nvis(jland))
+            endif
+          endif
+          if (found) exit
+        enddo
+        if (found) then  ! increment running totals
+          found_any = .true.
+          Msum(jland) = Msum(jland) + vw_CWD
+          Mcount(jland) = Mcount(jland) + 1
+        endif
+      enddo ! loop over lines in VW CWD obs datafile
+  225 continue
+      write(6,*) 'Finished reading VW CWD file, now calculate averages'
+      close(217)
+      do jland = 1,land_dim
+        if (Mcount(jland) .gt. 0) then
+          vw_CWD = Msum(jland)/Mcount(jland)
+          sitecount = sitecount + 1  ! for sitename in PEST
+          write(vw_siteID,'(I0.4)') sitecount   ! convert sitecount to 4-char string
+          countobs = countobs + 1
+          obsname(countobs) = 'CWD'//trim(vw_siteID)//'R'
+          if (biome(jland) .ne. 0) then
+            obsinfo(countobs) = trim(VWCWDProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))//'C'//int2str2(Mcount(jland))
+          else
+            obsinfo(countobs) = trim(VWCWDProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))//'C'//int2str2(Mcount(jland))
+          endif
+          obs(countobs) = 0.5 * vw_CWD  ! convert from tDM/ha to tC/ha
+          weight(countobs) = 1.0
+          grpname(countobs) = 'vwcwd'
+          obssitename(countobs) = trim(vw_siteID)
+          obstype(countobs) = 'CWD'
+          obs_proc(countobs) = trim(VWCWDProcess)
+          write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+        endif  ! at least one observation in this gridcell, average calculated
+      end do  ! loop over gridcells
+    else
+      write(6,*) '  - multiple observations within a gridcell treated separately'
+      found_any = .false.
+      do
+        sitecount = sitecount + 1
+        read(217,*,end=223) vw_lon,vw_lat,vw_CWD
+        ! Find index of corresponding gridcell
+        found = .false.
+        do j = 1,land_dim
+          if ((abs(vw_lat-local_lat(j)) .le. modelres/2.0) .and. (abs(vw_lon-local_lon(j)) .le. modelres/2.0)) then
+            jland = j
+            found = .true.
+            write(6,*) 'Gridcell is ',j
+          endif
+          if (found) exit
+        end do
+        if (found) then
+          found_any = .true.
+          write(vw_siteID,'(I0.4)') sitecount   ! use obs number in file as site name for PEST, convert to 4-char string
+          countobs = countobs + 1
+          obsname(countobs) = 'CWD'//trim(vw_siteID)//'R'
+          if (biome(jland) .ne. 0) then
+            obsinfo(countobs) = trim(VWCWDProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'Pp'//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                //'R'//int2str1(ifix(reccap(jland)))
+          else
+            obsinfo(countobs) = trim(VWCWDProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'Pp'//'N'//int2str2(ifix(nvis(jland)))  &
+                //'R'//int2str1(ifix(reccap(jland)))
+          endif
+          obs(countobs) = 0.5 * vw_CWD  ! convert from tDM/ha to tC/ha
+          weight(countobs) = 1
+          grpname(countobs) = 'vwcwd'
+          obssitename(countobs) = trim(vw_siteID)
+          obstype(countobs) = 'CWD'
+          obs_proc(countobs) = trim(VWCWDProcess)
+          write(6,*)  vw_lat,' ',vw_lon,' ',vw_CWD,' ',obsname(countobs),' ',obsinfo(countobs)
+        endif
+      end do
+    endif
+    write(6,*) 'Finished Volkova-Weston coarse woody debris measurements'
+    if (.not.(found_any)) write(6,*) 'No measurements found in current domain'
+    write(6,*) ' '
+223 continue
+    close(217)
   endif
 !------------------------------------------------------------------------------------------------------------------
   if ((LBASelect .ne. 'not') .or. (LTDSelect .ne. 'not') .or. (AGDSelect .ne. 'not')) then 
@@ -1158,8 +1623,9 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
     prevsite = 'dum'
     prevlat = 90.0
     prevlon = 0.0
-    open(unit=220,file='Auscover_biolob_site_key.txt')  ! Create a file linking my sitename with the plot libraries
+    open(unit=220,file='Auscover_biolib_site_key.txt')  ! Create a file linking my sitename with the plot libraries
     write(220,*) 'Sitename_for_PEST  Auscover_Sitename'
+    found_any = .false.
     do
 221   continue   
       read(219,'(A400)',end=219) line
@@ -1193,12 +1659,17 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
           if ((abs(bpl_lat-local_lat(j)) .le. modelres/2.0) .and. (abs(bpl_lon-local_lon(j)) .le. modelres/2.0)) then
             jland = j
             found = .true.
-            write(6,*) 'Auscover Plot Library obs ',trim(bpl_sitename),' is in model gridcell ',jland,' with biome ',biome(jland),' and iveg=',iveg(jland)
-            write(6,*) 'frac=',BiomeForestFrac(biome(jland))
+            if (biome(jland) .ne. 0) then
+              write(6,*) 'Auscover Plot Library obs ',trim(bpl_sitename),' is in model gridcell ',jland,' with biome ',biome(jland),', iveg=',iveg(jland),' and NVIS=',nvis(jland)
+              write(6,*) 'frac=',BiomeForestFrac(biome(jland))
+            else
+              write(6,*) 'Auscover Plot Library obs ',trim(bpl_sitename),' is in model gridcell ',jland,' with iveg=',iveg(jland),' and NVIS=',nvis(jland)
+            endif
           endif
           if (found) exit
         enddo
         if (found) then
+          found_any = .true.
           ! Find pop index for first patch of that gridcell
           foundp = .false.
           do j = 1,pop_land_dim   
@@ -1227,9 +1698,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             endif
           endif
         endif
-        if (.not.(found)) then
-          write(6,*) 'Did not find model gridcell corresponding to observation ',trim(bpl_sitename), bpl_lat,bpl_lon
-        else
+        if (found) then
           ! Check whether site is the same as previous obs or new
           if ((trim(bpl_sitename) .ne. trim(prevsite)) .or. ((bpl_lat-prevlat) .lt. 1.0e4) .or. ((bpl_lon-prevlon) .lt. 1.0e4)) then  ! new unique site
             sitecount = sitecount + 1  ! for sitename in PEST
@@ -1239,8 +1708,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
           if ((bpl_lba .ne. 0) .and. (LBASelect .ne. 'not')) then
             countobs = countobs + 1
             obsname(countobs) = 'LBA'//trim(bpl_siteID)//'I'
-            obsinfo(countobs) = trim(LBAProcess)//int2str5(pidx)//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(LBAProcess)//int2str5(pidx)//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(LBAProcess)//int2str5(pidx)//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
 !write(6,*) BiomeForestFrac(biome(jland)),biome(jland)
 !read(5,*)
             obs(countobs) = bpl_lba
@@ -1254,8 +1728,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
           if ((bpl_ltd .ne. 0) .and. (LTDSelect .ne. 'not')) then
             countobs = countobs + 1
             obsname(countobs) = 'LTD'//trim(bpl_siteID)//'I'
-            obsinfo(countobs) = trim(LTDProcess)//int2str5(pidx)//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(LTDProcess)//int2str5(pidx)//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(LTDProcess)//int2str5(pidx)//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = bpl_ltd
             weight(countobs) = 1.0
             grpname(countobs) = 'bplltd'
@@ -1275,8 +1754,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             else
               obsname(countobs) = 'AGD'//trim(bpl_siteID)//'M'//int2str4(bpl_yr)//int2str2(bpl_mon)
             endif
-            obsinfo(countobs) = trim(AGDProcess)//int2str4(jland)//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(AGDProcess)//int2str5(jland)//'Pp'//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(AGDProcess)//int2str5(jland)//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = bpl_agd
             weight(countobs) = 1.0
             grpname(countobs) = 'bplagd'
@@ -1290,10 +1774,140 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
     end do  ! loop over lines in the file
 219   continue    ! end reading Auscover Biomass Plot Library measurements 
     write(6,*) 'Finished Auscover Biomass Plot Library measurements'
-    write(6,*) 
+    if (.not.(found_any)) write(6,*) 'No observations found in current domain'
+    write(6,*) ' '
+    close(219)
     close(220)
   endif
+
 !------------------------------------------------------------------------------------------------------------------
+  if (ABMSelect .ne. 'not') then 
+  !  MaxBio aboveground biomass measurements (only include those measurements in mask, averaged by gridcell)
+    write(6,*) 'Read MaxBio observations'
+    flnm = trim(OBS_PATH) // 'MaxBio/' // 'DataForMaxbioAnalysis_unix.csv'
+    write(6,*) flnm
+    open(unit=216,file=flnm,iostat=iostat)
+    if (iostat .ne. 0) then
+      write(6,*) '*******************************************************************'
+      write(6,*) 'Missing MaxBio file',trim(flnm)
+      write(6,*) 'Program stopped'
+      write(6,*) '*******************************************************************'
+      STOP
+    endif
+    read(216,*)
+    sitecount = 0  ! used to generate standard sitename
+    found_any = .false.
+    if (AverageStoreObs) then
+      write(6,*) '  - average multiple observations within a gridcell'
+      prevsite = 'dum'
+      prevlat = 90.0
+      prevlon = 0.0
+      Msum(:) = 0.0
+      Mcount(:) = 0
+      ! Loop over obs file, reading and adding to running sums if in domain
+      do
+        read(216,'(A400)',end=216) line
+        maxbio_lon = GetArg(3)
+        maxbio_lat = GetArg(4)
+        maxbio_agb = GetArg(5)
+        ! Find cable index of corresponding gridcell
+        found = .false.
+        do j = 1,land_dim
+          if ((abs(maxbio_lat-local_lat(j)) .le. modelres/2.0) .and. (abs(maxbio_lon-local_lon(j)) .le. modelres/2.0)) then
+            jland = j
+            found = .true.
+            if (biome(jland) .ne. 0) then
+              write(6,*) 'MaxBio obs at ',maxbio_lat,' ',maxbio_lon,' is in model gridcell ',jland,' with biome ',biome(jland),' and NVIS=',nvis(jland)
+              write(6,*) 'frac=',BiomeForestFrac(biome(jland))
+            else
+              write(6,'(a,f10.5,a,f10.5,a,i6,a,i3)') 'MaxBio obs ',maxbio_lat,' ',maxbio_lon,' is in model gridcell ',jland,' with NVIS=',ifix(nvis(jland))
+            endif
+          endif
+          if (found) exit
+        enddo
+        if (found) then  ! increment running totals
+          found_any = .true.
+          Msum(jland) = Msum(jland) + maxbio_agb
+          Mcount(jland) = Mcount(jland) + 1
+        endif
+      enddo ! loop over lines in MaxBio obs datafile
+  216 continue
+      write(6,*) 'Finished reading MaxBio file, now calculate averages'
+      close(216)
+      do jland = 1,land_dim
+        if (Mcount(jland) .gt. 0) then
+          maxbio_agb = Msum(jland)/Mcount(jland)
+          sitecount = sitecount + 1  ! for sitename in PEST
+          write(max_siteID,'(I0.5)') sitecount   ! convert sitecount to 5-char string
+          countobs = countobs + 1
+          obsname(countobs) = 'ABM'//trim(max_siteID)//'R'
+          if (biome(jland) .ne. 0) then
+            obsinfo(countobs) = trim(ABMProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))//'C'//int2str2(Mcount(jland))
+          else
+            obsinfo(countobs) = trim(ABMProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))//'C'//int2str2(Mcount(jland))
+          endif
+          obs(countobs) = maxbio_agb
+          weight(countobs) = 1.0
+          grpname(countobs) = 'abm'
+          obssitename(countobs) = trim(max_siteID)
+          obstype(countobs) = 'ABM'
+          obs_proc(countobs) = trim(ABMProcess)
+          write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+        endif  ! at least one observation in this gridcell, average calculated
+      end do  ! loop over gridcells
+    else
+      write(6,*) '  -  multiple observations within a gridcell treated separately'
+      do
+        read(216,'(A400)',end=316) line
+        maxbio_lon = GetArg(3)
+        maxbio_lat = GetArg(4)
+        maxbio_agb = GetArg(5)
+        ! Find cable index of corresponding gridcell
+        found = .false.
+        do j = 1,land_dim
+          if ((abs(maxbio_lat-local_lat(j)) .le. modelres/2.0) .and. (abs(maxbio_lon-local_lon(j)) .le. modelres/2.0)) then
+            jland = j
+            found = .true.
+            if (biome(jland) .ne. 0) then
+              write(6,*) 'MaxBio obs at ',maxbio_lat,' ',maxbio_lon,' is in model gridcell ',jland,' with biome ',biome(jland),' and NVIS=',nvis(jland)
+              write(6,*) 'frac=',BiomeForestFrac(biome(jland))
+            else
+              write(6,'(a,f10.5,a,f10.5,a,i5,a,i3)') 'MaxBio obs ',maxbio_lat,' ',maxbio_lon,' is in model gridcell ',jland,' with NVIS=',ifix(nvis(jland))
+            endif
+          endif
+          if (found) exit
+        enddo
+        if (found) then
+          found_any = .true.
+          sitecount = sitecount + 1  ! for sitename in PEST
+          write(max_siteID,'(I0.5)') sitecount   ! convert sitecount to 5-char string
+          countobs = countobs + 1
+          obsname(countobs) = 'ABM'//trim(max_siteID)//'R'
+          if (biome(jland) .ne. 0) then
+            obsinfo(countobs) = trim(ABMProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpB'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))//'C'//int2str2(Mcount(jland))
+          else
+            obsinfo(countobs) = trim(ABMProcess)//int2str5(jland)//trim(CableCasaFile(1:3))//'PpN'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+          endif
+          obs(countobs) = maxbio_agb
+          weight(countobs) = 1.0
+          grpname(countobs) = 'abm'
+          obssitename(countobs) = trim(max_siteID)
+          obstype(countobs) = 'ABM'
+          obs_proc(countobs) = trim(ABMProcess)
+          write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+        endif    
+      enddo
+  316 continue
+    endif
+    write(6,*) 'Finished MaxBio measurements'
+    if (.not.(found_any)) write(6,*) 'No measurements found in current domain'
+    write(6,*) 
+  endif
+!--------------------------------------------------------------------------------------------------------------------------
 ! CosmOz soil moisture obs, daily means 9am-9am or monthly means of daily means
   if (SMCSelect .ne. 'not') then
 
@@ -1384,7 +1998,10 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
       countfile = 0
       sum_sm = 0.0
       sum_dep = 0.0
+      sum_sm_mon = 0.0
+      sum_dep_mon = 0.0
       count_hr = 0
+      count_days = 0
       PrevDate%Year = 1900
       PrevDate%Month = 1
       PrevDate%Day = 1 
@@ -1409,7 +2026,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             endif
           endif
         endif
-        if ((PrevDate .ne. CurrentDate) .and. (countfile .ne. 1)) then
+        if ((PrevDate .ne. CurrentDate) .and. (countfile .ne. 1)) then  ! new day
           ! if more than 12 measurements in a daily average, and if not 29 Feb with leapflag=false, then write daily value to file
           if ((count_hr .gt. 12) .and. (.not.(.not.(leapflag) .and. (PrevDate%Day .eq. 29) .and. (PrevDate%Month .eq. 2))))then  
             sm = sum_sm/count_hr
@@ -1447,8 +2064,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
               else 
                 write(depstr,'(f5.2)') dep
               endif
-              obsinfo(countobs) = trim(SMCProcess)//int2str4(jland)//'D'//trim(depstr)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+              if (biome(jland) .ne. 0) then
+                obsinfo(countobs) = trim(SMCProcess)//int2str5(jland)//'D'//trim(depstr)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                   //'R'//int2str1(ifix(reccap(jland)))
+              else
+                obsinfo(countobs) = trim(SMCProcess)//int2str5(jland)//'D'//trim(depstr)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                  //'R'//int2str1(ifix(reccap(jland)))
+              endif
               obs(countobs) = sm/100.0  ! convert % to fraction
               if ((PrevDate .ge. SiteStart) .and. (PrevDate .le. SiteEnd)) then
                 weight(countobs) = 1.0
@@ -1460,11 +2082,77 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
               obstype(countobs) = 'SMC'
               obs_proc(countobs) = trim(SMCProcess)
             !  write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
-            else  ! save for monthly obs
-              count_days = count_days + 1   ! **** fill this in for monthly ave....
-            endif
+            else  ! save for monthly obs = sum of daily obs 
+              count_days = count_days + 1 
+              sum_sm_mon = sum_sm_mon + sm
+              sum_dep_mon = sum_dep_mon + dep
+              if (CurrentDate%Day .eq. DaysInMonthEither(CurrentDate,LeapFlag)) then
+                if (count_days .ge. 15) then
+                  sm_mon = sum_sm_mon/count_days
+                  dep_mon = sum_dep_mon/count_days
+                  count_days = 0
+                  sum_sm_mon = 0.0
+                  sum_dep_mon = 0.0
+                  countobs = countobs + 1
+                  found = .false.
+                  if (dep/100.0 .le. 0.5*zse(jland,ipatch,1)) then
+                    nlayer = 0   ! nlayer is shallowest later used for interpolation of soil layers for sm (zero for depth > 0.5*zse(1)
+                    found = .true.
+                  else
+                    do j = 1,soil_dim-1
+                      if ((sum(zse(jland,ipatch,1:j-1))+0.5*zse(jland,ipatch,j) .lt. dep/100.0) .and.   &  ! find nlayer
+                               (sum(zse(jland,ipatch,1:j))+0.5*zse(jland,ipatch,j+1) .ge. dep/100.0)) then
+                        nlayer = j
+                        found = .true.
+                      endif
+                      if (found) exit
+                    end do
+                  endif
+                  if (.not.(found)) then
+                    write(6,*) '*******************************************************************'
+                    write(6,*) 'Error finding model soil layer corresponding to CosmOz observation ',sitecode,' ',sitename,' ',PrevDate,' ',dep
+                    write(6,*) 'Program stopped'
+                    write(6,*) '*******************************************************************'
+                    STOP
+                  endif
+                  obsname(countobs) = 'SMC'//trim(sitecode)//'M'//int2str4(PrevDate.Year)//int2str2(PrevDate.Month) &
+                        //'L'//int2str1(nlayer)
+                  if (dep .lt. 10.0) then
+                    write(depstr,'(f5.3)') dep
+                  else
+                    write(depstr,'(f5.2)') dep
+                  endif
+                  if (biome(jland) .ne. 0) then
+                    obsinfo(countobs) = trim(SMCProcess)//int2str5(jland)//'D'//trim(depstr)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                      //'R'//int2str1(ifix(reccap(jland)))
+                  else
+                    obsinfo(countobs) = trim(SMCProcess)//int2str5(jland)//'D'//trim(depstr)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                      //'R'//int2str1(ifix(reccap(jland)))
+                  endif
+                  obs(countobs) = sm_mon/100.0  ! convert % to fraction
+                  if ((PrevDate .ge. SiteStart) .and. (PrevDate .le. SiteEnd)) then
+                    weight(countobs) = 1.0
+                  else
+                     weight(countobs) = 0.0
+                  endif
+                  grpname(countobs) = 'smcosmoz'
+                  obssitename(countobs) = trim(sitecode)
+                  obstype(countobs) = 'SMC'
+                  obs_proc(countobs) = trim(SMCProcess)
+              !    write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+                else ! fewer than 15 days of data in month, ignore
+                  count_days = 0
+                  sum_sm = 0.0
+                  sum_dep = 0.0
+                endif
+              endif  ! end of the month 
+            endif  
+          else ! reset to zero to calculate next day as previous < 12 hours or Feb 29 and model doesn't have leap years
+            count_hr = 0
+            sum_sm = 0.0
+            sum_dep = 0.0
           endif  
-        endif
+        endif  ! new day
         if (CurrentDate .ge. EndDate) goto 251 ! all remaining data is beyond range of model output, so ignore
         count_hr = count_hr + 1
         sum_sm = sum_sm + sm_hr
@@ -1546,18 +2234,19 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
         ! read column headings into string array sarray
         read(22,'(a)') strline
         n = count( (/ (strline(i:i), i=1, len_trim(strline)) /) == ",")
+        write(6,*) n,' columns in file'
         allocate(sarray(n))
         allocate(smdeps(n))
         allocate(oznet(n))
         smdeps(:) = 'xxxx'
         oznet(:) = -999.0
-        strline = strline(2:len(strline)) ! remove first comma (no column title for date)
+        strline = strline(2:len_trim(strline)) ! remove first comma (no column title for date)
         do j = 1,n-1
           k = index(strline,',')         ! position of first comma
           sarray(j) = strline(1:k-1)     
-          strline = strline(k+1:len(strline))
+          strline = strline(k+1:len_trim(strline))
         enddo
-        sarray(5) = strline
+        sarray(n) = trim(strline)
         write(6,*) 'Column headings are '
         do j = 1,n
           str = trim(sarray(j))
@@ -1585,43 +2274,84 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             endif
             smdeps(j) = s1//s2
             write(6,*)  '"',trim(sarray(j)),'" -> ',smdeps(j)
+          else
+             write(6,*)  '"',trim(sarray(j)),'" -> not sm'
           endif
         enddo 
+        do j = 1,n
+          write(6,*) j,smdeps(j)
+        enddo
         ! read data
+        obsvalue = -999.0
         do j = 1,n  ! loop over columns in data file, so obs from same depth range are together
-          close(22)
-          open(unit=22,file=flnm,status='OLD')
-          read(22,*)  ! column descriptions
-          do
-            read(22,*,end=351) datestr,oznet 
-            read(datestr,'(i4,a,i2,a,i2)') yy,ch,mm,ch,dd
-            CurrentDate%Year = yy
-            CurrentDate%Month = mm
-            CurrentDate%Day = dd
-            ! ignore Feb 29 if not using leap years
-            if ((.not.(.not.(leapflag) .and. (CurrentDate%Day .eq. 29) .and. (CurrentDate%Month .eq. 2))) .and. (CurrentDate .lt. EndDate)) then  
-              if ((smdeps(j) .ne. 'xxxx') .and. (oznet(j) .ne. -999.0)) then
-                countobs = countobs + 1
-                obsname(countobs) = 'SMO'//trim(sitecode)//'D'//int2str4(CurrentDate.Year)//int2str2(CurrentDate.Month)//int2str2(CurrentDate.Day) &
-                  //'L'//smdeps(j)
-                obsinfo(countobs) = trim(SMOProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
-                  //'R'//int2str1(ifix(reccap(jland)))
-                obs(countobs) = oznet(j)/100.0  ! convert % to fraction
-                if ((CurrentDate .ge. SiteStart) .and. (CurrentDate .le. SiteEnd)) then
-                  weight(countobs) = 1.0
-                else
-                   weight(countobs) = 0.0
-                endif
-                grpname(countobs) = 'smoznet'
-                obssitename(countobs) = trim(sitecode)
-                obstype(countobs) = 'SMO'
-                obs_proc(countobs) = trim(SMOProcess)
-            !    write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+          if (smdeps(j) .ne. 'xxxx') then
+            close(22)
+            open(unit=22,file=flnm,status='OLD')
+            read(22,*)  ! column descriptions
+            do
+              read(22,*,end=351) datestr,oznet 
+              read(datestr,'(i4,a,i2,a,i2)') yy,ch,mm,ch,dd
+              CurrentDate%Year = yy
+              CurrentDate%Month = mm
+              CurrentDate%Day = dd
+              ! ignore Feb 29 if not using leap years
+              if ((.not.(.not.(leapflag) .and. (CurrentDate%Day .eq. 29) .and. (CurrentDate%Month .eq. 2))) .and. (CurrentDate .lt. EndDate)) then  
+                if (oznet(j) .gt. -999.0) then
+                  obsvalue = -999.0
+                  if (SMOdm .eq. 'mon') then
+                    if ((CurrentDate%Day .eq. 1) .or. ((CurrentDate%Month .eq. PreviousDate%Month) .and. (CurrentDate%Year .eq. PreviousDate%Year) .and. &
+                                                  (smdays .eq. CurrentDate%Day-1))) then  ! keep adding to running sum, as there is no missing data
+                      sm_sum = sm_sum + oznet(j)
+                      smdays = smdays + 1
+                      CurrentMonth = CurrentDate
+                      CurrentMonth%Day = 16
+                      if ((CurrentDate%Day .eq. DaysInMonthEither(CurrentDate,LeapFlag)) .and. (smdays .eq. CurrentDate%Day)) then ! end of month, all days exist
+                        obsvalue = sm_sum/smdays
+                        sm_sum = 0.0
+                        smdays = 0
+                      endif
+                      PreviousDate = CurrentDate
+                    else  ! reset sums to zero for new month
+                      sm_sum = 0.0
+                      smdays = 0
+                      obsvalue = -999.0
+                    endif ! end of month - calculate monthly value if all days are present
+                  else
+                    obsvalue = oznet(j)
+                  endif
+                  if (obsvalue .gt. -998.0) then  ! either daily value or monthly average is available
+                    countobs = countobs + 1
+                    if (SMOdm .eq. 'mon') then
+                      obsname(countobs) = 'SMO'//trim(sitecode)//'M'//int2str4(CurrentDate.Year)//int2str2(CurrentDate.Month)//'L'//smdeps(j)
+                    else
+                      obsname(countobs) = 'SMO'//trim(sitecode)//'D'//int2str4(CurrentDate.Year)//int2str2(CurrentDate.Month)//int2str2(CurrentDate.Day) &
+                        //'L'//smdeps(j)
+                    endif
+                    if (biome(jland) .ne. 0) then
+                      obsinfo(countobs) = trim(SMOProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+                          //'R'//int2str1(ifix(reccap(jland)))
+                    else
+                      obsinfo(countobs) = trim(SMOProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                          //'R'//int2str1(ifix(reccap(jland)))
+                    endif
+                    obs(countobs) = obsvalue/100.0  ! convert % to fraction
+                    if ((CurrentDate .ge. SiteStart) .and. (CurrentDate .le. SiteEnd)) then
+                      weight(countobs) = 1.0
+                    else
+                       weight(countobs) = 0.0
+                    endif
+                    grpname(countobs) = 'smoznet'
+                    obssitename(countobs) = trim(sitecode)
+                    obstype(countobs) = 'SMO'
+                    obs_proc(countobs) = trim(SMOProcess)
+                    write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+                  endif  ! value to write to file
+                endif  ! missing data
               endif
-            endif
-            if (CurrentDate .ge. EndDate) goto 351 ! all remaining data is beyond range of model output, so ignore
-          enddo
-  351     continue
+              if (CurrentDate .ge. EndDate) goto 351 ! all remaining data is beyond range of model output, so ignore
+            enddo
+  351       continue
+          endif  ! 29 Feb w/o leaps, or after EndDate
         enddo  ! loop over columns in datafile
         deallocate(sarray)
         deallocate(smdeps)
@@ -1730,8 +2460,13 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             if (SMFdm .eq. 'day') obsname(countobs) = 'SMF'//trim(sitecode)//'D'//int2str4(yy)//int2str2(mm)//int2str2(dd)//'L0021'
             if (SMFdm .eq. 'hho') obsname(countobs) = 'SMF'//trim(sitecode)//'F'//int2str4(yy)//int2str2(mm)//int2str2(dd)//int2str2(hh)  &
                     //int2str2(ff)//'L0021'
-            obsinfo(countobs) = trim(SMFProcess)//int2str4(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
+            if (biome(jland) .ne. 0) then
+              obsinfo(countobs) = trim(SMFProcess)//int2str5(jland)//'P'//sitepatch//'B'//int2str2(biome(jland))//'N'//int2str2(ifix(nvis(jland)))  &
                     //'R'//int2str1(ifix(reccap(jland)))
+            else
+              obsinfo(countobs) = trim(SMFProcess)//int2str5(jland)//'P'//sitepatch//'N'//int2str2(ifix(nvis(jland)))  &
+                    //'R'//int2str1(ifix(reccap(jland)))
+            endif
             obs(countobs) = SMF
             if (SMFSelect .eq. 'opt') then
               weight(countobs) = rangeweight
@@ -1771,6 +2506,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
 
     write(6,*) 'Streamflow observations:'
     ! Read file describing gridcells that represent the catchments, and obs themselves
+    write(6,*) 'Read details of catchments in file ',trim(CatchmentFile)
     OPEN(UNIT=21,FILE=trim(CatchmentFile),STATUS='OLD',iostat=iostat)
     if (iostat .ne. 0) then
       write(6,*) '*******************************************************************'
@@ -1852,7 +2588,11 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
             jland = j
             found = .true.
             write(6,*) 'Gridcell is ',jland
-            write(26,*) jland, ' ',biome(jland),' ',ifix(nvis(jland)),' ',ifix(reccap(jland))
+          !  if (biome(jland) .ne. 0) then
+              write(26,*) jland, ' ',biome(jland),' ',ifix(nvis(jland)),' ',ifix(reccap(jland))
+          !  else 
+          !    write(26,*) jland, ' ',ifix(nvis(jland)),' ',ifix(reccap(jland))
+          !  endif
             jlandcount = jlandcount + 1
             jlandsav(jlandcount) = jland  ! saved to sum up precip
           endif
@@ -1860,7 +2600,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
         end do
         if (.not.(found)) then
           write(6,*) '*******************************************************************'
-          write(6,*) 'Error finding model gridcell corresponding to catchment ',catchname,sitelat,sitelon
+          write(6,*) 'Could not find model gridcell corresponding to ',sitelat,sitelon,' in catchment ',catchname
           write(6,*) 'Program stopped'
           write(6,*) '*******************************************************************'
           STOP
@@ -1949,7 +2689,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
               obstype(countobs) = 'STR'
               obs_proc(countobs) = trim(STRProcess)
               !write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
-              timeidx = FindTimeIndex (CurrentDate,timeDMY,leapflag) 
+              timeidx = FindTimeIndex (CurrentDate,timeDMY,leapflag,output_averaging) 
               do ig = 1,jlandcount  ! loop over gridcells in catchment
                 totalprecip = totalprecip + (Rainf(jlandsav(ig),1,timeidx)*patchfrac(jlandsav(ig),1)  &
                             + Rainf(jlandsav(ig),2,timeidx)*patchfrac(jlandsav(ig),2) + Rainf(jlandsav(ig),3,timeidx)*patchfrac(jlandsav(ig),3)) ! mm/d
@@ -1975,7 +2715,9 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
                                                 (Qdays .eq. CurrentDate%Day-1))) then  ! keep adding to running sum, as there is no missing data
                 Qsum = Qsum + Qobs_Q(k)
                 Qdays = Qdays + 1
-                timeidx = FindTimeIndex (CurrentDate,timeDMY,leapflag)  ! calculate long-term mean precip corresp to obs
+                CurrentMonth = CurrentDate
+                CurrentMonth%Day = 16
+                timeidx = FindTimeIndex (CurrentDate,timeDMY,leapflag,output_averaging)  ! calculate long-term mean precip in model corresp to obs
                 do ig = 1,jlandcount  ! loop over gridcells in catchment
                   precip = precip + Rainf(jlandsav(ig),1,timeidx)  ! mm/d   
                   precipcount = precipcount + 1
@@ -2002,7 +2744,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
                   obssitename(countobs) = trim(catchname)
                   obstype(countobs) = 'STR'
                   obs_proc(countobs) = trim(STRProcess)
-               !   write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
+                  write(6,*) obsname(countobs),' ',obsinfo(countobs),' ',obs(countobs)
                   Qsum = 0.0
                   Qdays = 0
                   totalprecip = totalprecip + precip
@@ -2046,6 +2788,23 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   allocate(sortedobsname(countobs))
   allocate(sortedobsinfo(countobs))
   allocate(sortedgrpname(countobs))
+  ! Check that all obs types are in obscode (or sorting won't work)
+  do i = 1,countobs
+    str = obsname(i)
+    found = .false.
+    do j = 1,size(obscode) 
+      if (str(1:3) .eq. obscode(j)) found = .true.
+    enddo
+    if (.not.(found)) then 
+      write(6,*) '*****************************************************************************'
+      write(6,*) 'ERROR: Obstype ',trim(str(1:3)) ,' not in list in CompileObservable.f90 for sorting'
+      write(6,*) obscode
+      write(6,*) 'Program stopped'
+      write(6,*) '*****************************************************************************'
+      STOP
+    endif
+  enddo
+  ! Loop over obs types and put observations into this order (makes ExtractObservables more efficient)
   do j = 1,size(obscode)
     do i = 1,countobs
        str = obsname(i)
@@ -2104,7 +2863,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   write(25,*) 'pif #'
   write(25,*) '#output#'
   do i = 1,countobs
-    write(23,'(a20,a,e,a,e,a,a10,a,a20)') trim(sortedobsname(i)),' ',sortedobs(i),' ',sortedweight(i),' ',trim(sortedgrpname(i)),' ', trim(sortedobsinfo(i))
+    write(23,'(a20,a,e,a,e,a,a10,a,a26)') trim(sortedobsname(i)),' ',sortedobs(i),' ',sortedweight(i),' ',trim(sortedgrpname(i)),' ', trim(sortedobsinfo(i))
     write(24,*) sortedobsname(i),  sortedobs(i), sortedweight(i), sortedgrpname(i)
     write(25,*) ' l1 [', trim(sortedobsname(i)),']1:14'
   end do
@@ -2119,7 +2878,7 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   if (NEPSelect .ne. 'not') write(6,*) 'NEPSelect is "',NEPSelect,'" with processing "',NEPProcess,'" and time resolution "',OzFluxRes,'"'
   if (RecSelect .ne. 'not') write(6,*) 'RecSelect is "',RecSelect,'" with processing "',RecProcess,'" and time resolution "',OzFluxRes,'"'
   if (RsoSelect .ne. 'not') write(6,*) 'RsoSelect is "',RsoSelect,'" with processing "',RsoProcess,'" and time resolution "',Rsodm,'"'
-  if (LAISelect .ne. 'not') write(6,*) 'LAISelect is "',LAISelect,'" with processing "',LAIProcess,'"'
+  if (LAISelect .ne. 'not') write(6,*) 'LAISelect is "',LAISelect,'" with processing "',LAIProcess,'" and time resolution "',LAIbm,'"'
   if (SMCSelect .ne. 'not') write(6,*) 'SMCSelect is "',SMCSelect,'" with processing "',SMCProcess,'" and time resolution "',SMCdm,'"'
   if (SMOSelect .ne. 'not') write(6,*) 'SMOSelect is "',SMOSelect,'" with processing "',SMOProcess,'" and time resolution "',SMOdm,'"'
   if (SMFSelect .ne. 'not') write(6,*) 'SMFSelect is "',SMFSelect,'" with processing "',SMFProcess,'" and time resolution "',SMFdm,'"'
@@ -2131,6 +2890,14 @@ if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processi
   if (LBASelect .ne. 'not') write(6,*) 'LBASelect is "',LBASelect,'" with processing "',LBAProcess,'"'
   if (LTDSelect .ne. 'not') write(6,*) 'LTDSelect is "',LTDSelect,'" with processing "',LTDProcess,'"'
   if (AGDSelect .ne. 'not') write(6,*) 'AGDSelect is "',AGDSelect,'" with processing "',AGDProcess,'"'
+  if (ABMSelect .ne. 'not') write(6,*) 'ABMSelect is "',ABMSelect,'" with processing "',ABMProcess,'"'
+
+  if ((VRSoilC0Select .ne. 'not') .and. (nsoilobs .gt. 0)) then
+    write(6,*) '............................................................................'
+    write(6,*) '   Soil C obs are selected, so remember to have available the soilC0_frac '
+    write(6,*) '     parameter in file ObsOperatorParams.txt'
+    write(6,*) '............................................................................'
+  endif
 
 end program CompileObservations
 

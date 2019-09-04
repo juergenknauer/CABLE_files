@@ -104,7 +104,6 @@
    cable_user%POPLUC_RunType = 'static'
    cable_user%vcmax = 'Walker2014'
    cable_user%gs_switch = 'medlyn'
-   cable_user%finite_gm = .FALSE.
    cable_user%limit_labile = .F.
    cable_user%SRF = .T.
    cable_user%SMRF_NAME = 'DAMM'
