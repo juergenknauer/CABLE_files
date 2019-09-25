@@ -17,4 +17,4 @@ ulimit -s 10240
 WD=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site/CumberlandPlain
 
 rm -rf ./tmp/PEST/PEST1/CABLE*
-mpirun ppest ${WD}/PEST_case /m ${WD}/tmp/PEST/PEST1/CABLE > log_PEST_case
+mpirun -np 8 ppest ${WD}/PEST_case /m ${WD}/tmp/PEST/PEST1/CABLE > log_PEST_case

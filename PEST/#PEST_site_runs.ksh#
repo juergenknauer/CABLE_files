@@ -1,22 +1,6 @@
 #!/bin/ksh
 
-# This script runs PEST at multiple OzFLUX/FLUXNET sites
-# Juergen Knauer, May/June 2019
-# for further details on PEST runs, see CABLE PEST documentation_JK.docx
-# ATTENTION: script only works for parameters + variables as specified in the template files!! It is also assumed that model files are ending with CNP...
-
-# Global settings:
-SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/OzFLUX_sitelist_v1.txt
-#SITE_LIST=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/test_sites1.txt
-SITE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/single_site # writeable run directory
-#TEMPLATE_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Juergen/CABLE_files/PEST #read only
-CSV_DIR=/OSM/CBR/OA_GLOBALCABLE/work/mdf/obs/CompileObservations/OzFlux # read/write (only write for new sites)
-OBS_DIR=/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux  # read only
-PLOT_DIR=/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/plots_R # read only
-
-EXP_NAME=imp  # take this one from somewhere else?
-SIM_EXT=CNP_2tiles_${EXP_NAME}_out
-RST_EXT=CNP_2tiles_${EXP_NAME}
+# This script runs PEST at mu
 #SIM_EXT=CNP_out
 #RST_EXT=CNP
 
@@ -26,8 +10,8 @@ RST_EXT=CNP_2tiles_${EXP_NAME}
 TEMPLATE_DIR=$PWD
 sites=$(cut -f 1 $SITE_LIST)
 
-#sites=Gingin
-#sites=CumberlandPlain
+#site=Tumbarumba
+#site=CumberlandPlain
 ind=1 # starting at 1 instead of 0 is deliberate
 
 for site in $sites; do
