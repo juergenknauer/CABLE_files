@@ -23,6 +23,9 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import calendar
 
+# only needed with python 2:
+import urllib2
+
 #rootgrp.close()
 
 
@@ -557,14 +560,14 @@ def create_file_from_source(src_file, trg_file):
 ## TODO:
 # - replace data_sites_counter for the calculation of LAI, as this does not work universally!!!!!!!
     
-generate_site_list      = False     # print site list after the loop?
+generate_site_list      = True     # print site list after the loop?
 full_years_only         = True     # take full years only?
 add_end_start_timesteps = True     # replicate first/last timesteps if they are missing?
                                    # timeseries is expected to start at 00:00 and end at 23:00
-multiple_tiles          = True     # 1 (False) or more tiles (True)?
-OzFlux_default          = False     # use default OzFlux processing (True) or site-specific processing 
+multiple_tiles          = False     # 1 (False) or more tiles (True)?
+OzFlux_default          = True     # use default OzFlux processing (True) or site-specific processing 
                                    # as provided by the site PIs (False)? ATTENTION: only set up for CumberlandPlain at the moment!!!! check LAI calculation if applied to other sites
-Elise_2019              = True     # special case: EC data from Elise (Dec. 2019) with specific requirements
+Elise_2019              = False     # special case: EC data from Elise (Dec. 2019) with specific requirements
 
 
 ## constants
@@ -574,7 +577,10 @@ k       = 0.5   # extinction coefficient in the LAI calculations (Trudinger et a
 
 
 ## paths
-basepath='C:/Users/kna016/Documents/CABLE/'
+#basepath='C:/Users/kna016/Documents/CABLE/'
+basepath='/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/forcing/'
+metpath='/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met/'
+
 
 ## stuff related to cover fraction file
 fcover   = pd.read_csv(basepath + 'cover_fract/ozflux28.gimms3g_fcovfperfrec.csv',index_col='PointName')
@@ -599,7 +605,7 @@ all_sites = 'AdelaideRiver', 'AliceSpringsMulga', 'Calperum', 'CapeTribulation',
 'DryRiver', 'Emerald', 'FoggDam', 'Gingin', 'GreatWesternWoodlands', 'HowardSprings', 'Litchfield', 'Loxton', 'Nimmo', 'Otway', 'RedDirtMelonFarm', \
 'Ridgefield', 'RiggsCreek', 'RobsonCreek', 'Samford', 'SturtPlains', 'TiTreeEast', 'Tumbarumba', 'WallabyCreek', 'Warra', 'Whroo', 'WombatStateForest', \
 'Yanco'
-all_sites = ('CumberlandPlain',)
+#all_sites = ('SturtPlains',)
    
 
 elevation = list(itertools.repeat(-9999,len(all_sites)))
@@ -612,7 +618,7 @@ LAI = list(itertools.repeat(-9999,len(all_sites)))
 
 
 ### 0) load site list and check if all sites are included
-sitelist = pd.read_csv('C:/Users/kna016/Documents/CABLE/OzFLUX_sitelist_v5.txt',sep="\t",index_col=0)
+sitelist = pd.read_csv(basepath + 'OzFLUX_sitelist_v5.txt',sep="\t",index_col=0)
 data_sites_counter = 0
 
 ## short excercise: extract all start and end dates from the sites
@@ -661,14 +667,14 @@ for s,site in enumerate(all_sites):
   
   ### 1) download nc files from the Ozflux webpage
   now = datetime.datetime.now()
-  outdir = 'C:/Users/kna016/Documents/CABLE/OzFluxL6/' + str(now.year) + '_' + str(now.month) + '_' + str(now.day) + '/'
+  outdir='/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux/' + str(now.year) + '_' + str(now.month) + '_' + str(now.day) + '/'
+  #outdir = 'C:/Users/kna016/Documents/CABLE/OzFluxL6/' + str(now.year) + '_' + str(now.month) + '_' + str(now.day) + '/'
   #outfile='D:/CSIRO/CABLE/OzFluxL6/' + site + '.nc'
-  outfile='C:/Users/kna016/Documents/CABLE/forcing_files/Cumberland_Elise/L6_merged_filled.nc'
+  #outfile='C:/Users/kna016/Documents/CABLE/forcing_files/Cumberland_Elise/L6_merged_filled.nc'
   #outfile='C:/Users/kna016/Documents/CABLE/OzFluxL6/2019_6_17/CumberlandPlain_L6.nc'
-  #try:
-  #  os.mkdir(outdir)
-  #except FileExistsError:
-  #  pass
+  if not os.path.isdir(outdir):
+    os.mkdir(outdir)
+
   
   
   metfile_present = True
@@ -677,30 +683,36 @@ for s,site in enumerate(all_sites):
     l = 6
     while l > 3:
       ls = str(l)
-      try:
-        outfile=outdir + site + '_L' + ls + '.nc'
-        if OzFlux_default:
-          url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/default/' + site + '_L' + ls + '.nc'  # note: 'fileServer' instead of 'catalog' (was not working with 'dodsC') 
-        else:
-          url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/site_pi/' + site + '_L' + ls + '.nc'
-        urllib.request.urlretrieve(url,outfile)
-        break
-      
-        
-            
-      except urllib.error.HTTPError:
+#      try:
+      outfile=outdir + site + '_L' + ls + '.nc'
+      if OzFlux_default:
+        url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/default/' + site + '_L' + ls + '.nc'  # note: 'fileServer' instead of 'catalog' (was not working with 'dodsC') 
+      else:
+        url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/site_pi/' + site + '_L' + ls + '.nc'
+      urllib.urlretrieve(url,outfile)  # use urllib.request.urlretrieve for python 3
+                 
+      #except urllib2.HTTPError:  # doesn't work with python 2 ...
+      if not os.path.isfile(outfile):
         if l > 4:
           print("no L" + ls + " data available online for site '" + site + "'! Trying L" + str(l-1) + " next.")
         else:
           print("no data available online for site '" + site + "'! Continue with next site.")
           metfile_present=False
         l=l-1
+      else:
+        break
+        
      
      
   if metfile_present:
-    ### 2) load nc file and write into a structured 'OzFlux' object and retrieve meteorological variables 
-    ds = nc_read_series(outfile,checktimestep=False)
-    
+    ### 2) load nc file and write into a structured 'OzFlux' object and retrieve meteorological variables
+    try:
+      ds = nc_read_series(outfile,checktimestep=False)
+    except IOError:
+      print("nc file can't be read for site '" + site + "'! Continue with next site.")
+      continue
+
+      
     # delete nc_nrecs global attribute if not consistent with the actual length
     if ds.globalattributes["nc_nrecs"] != len(ds.series['time']['Data']):
       del ds.globalattributes["nc_nrecs"]
@@ -889,7 +901,8 @@ for s,site in enumerate(all_sites):
               end_added_one = True
         else:       # delete the whole day
           print('unusual end hour! Last day of the time series is omitted.')
-          valid_days_end = list(np.where(date <= datetime.datetime(enddate_orig.year,enddate_orig.month,enddate_orig.day))[0])
+          #valid_days_end = list(np.where(date <= datetime.datetime(enddate_orig.year,enddate_orig.month,enddate_orig.day))[0])
+          valid_days_end = list(np.where(date < datetime.datetime(enddate_orig.year,enddate_orig.month,enddate_orig.day))[0])
           
           
 ## old version, assuming that the time stamp marks the beginning of the time step:        
@@ -957,8 +970,7 @@ for s,site in enumerate(all_sites):
     # valid_days[0]   
     # valid_days[-1] 
     
-    
-      
+         
     ### 5) take full years only
     valid_years = list(range(0,len(date)))
     if full_years_only:
@@ -1021,7 +1033,11 @@ for s,site in enumerate(all_sites):
               canopy_height.append(float(canopy_height_string[0:2]))
             except ValueError:
               if len(canopy_height_string) > 0:
-                canopy_height.append(float(canopy_height_string[0:1]))
+                try:
+                  canopy_height.append(float(canopy_height_string[0:1]))
+                except ValueError:
+                  print("canopy height is not available")
+                  canopy_height.append(None)
               else:
                 print("canopy height is not available")
                 canopy_height.append(None)
@@ -1055,14 +1071,15 @@ for s,site in enumerate(all_sites):
       
       
       ### 7) create empty nc file from scratch
-      if full_years_only == True and add_end_start_timesteps == True:
-        path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/fullyears_fulldays/'
-      elif full_years_only == True and add_end_start_timesteps == False:
-        path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/fullyears'
-      elif full_years_only == False and add_end_start_timesteps == True:
-        path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/fulldays'
-      elif full_years_only == False and add_end_start_timesteps == False:
-        path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/no_change'
+      path_met = metpath  # for use on Pearcey
+      #if full_years_only == True and add_end_start_timesteps == True:
+      #  path_met = basepath + 'forcing_files/fullyears_fulldays/'
+      #elif full_years_only == True and add_end_start_timesteps == False:
+      #  path_met = basepath + 'forcing_files/fullyears/'
+      #elif full_years_only == False and add_end_start_timesteps == True:
+      #  path_met = basepath + 'forcing_files/fulldays/'
+      #elif full_years_only == False and add_end_start_timesteps == False:
+      #  path_met = basepath + 'forcing_files/no_change/'
         
     
         
@@ -1269,6 +1286,7 @@ for s,site in enumerate(all_sites):
         LAIg = []
           
         years = range(int(str_startyear),int(str_endyear)+1)   # why +1 here??
+        print('years:' + str(years))
         for yr in years:
           # print(yr)
           if calendar.isleap(yr):
@@ -1418,7 +1436,7 @@ if generate_site_list:
 
 
   ### export dataframe to file
-  site_attr_df.to_csv('C:/Users/kna016/Documents/CABLE/OzFLUX_sitelist_v1.txt',sep="\t")
+  site_attr_df.to_csv(basepath + 'OzFLUX_sitelist_v1.txt',sep="\t")
 
 
 
@@ -1433,25 +1451,25 @@ if generate_site_list:
 
 
   ### combine site list with other information
-  sitelist = pd.read_csv('C:/Users/kna016/Documents/CABLE/OzFLUX_sitelist_v1.txt',sep="\t",index_col=0) # as created above
+  #sitelist = pd.read_csv('C:/Users/kna016/Documents/CABLE/OzFLUX_sitelist_v1.txt',sep="\t",index_col=0) # as created above
 
   ### delete WallabyCreek for now
-  sitelist = sitelist.drop("WallabyCreek",axis=0)
+  #sitelist = sitelist.drop("WallabyCreek",axis=0)
 
   ## NVIS5 vegetation classification
-  NVIS5 = pd.read_csv('C:/Users/kna016/Documents/CABLE/NVIS5/ozflux28.nvis5_group_type.csv',sep=",")
-  NVIS5_Group = NVIS5.iloc[4,1:]
+  #NVIS5 = pd.read_csv('C:/Users/kna016/Documents/CABLE/NVIS5/ozflux28.nvis5_group_type.csv',sep=",")
+  #NVIS5_Group = NVIS5.iloc[4,1:]
 
 
 
 
   ## combine the two --> Wallaby Creek is missing in the sitelist
-  sitelist = sitelist.join(NVIS5_Group,how='left')
-  sitelist.rename(columns={4:'NVIS5_Group'},inplace=True)
-  sitelist['NVIS5_Group'] = sitelist['NVIS5_Group'].astype('int')
+  #sitelist = sitelist.join(NVIS5_Group,how='left')
+  #sitelist.rename(columns={4:'NVIS5_Group'},inplace=True)
+  #sitelist['NVIS5_Group'] = sitelist['NVIS5_Group'].astype('int')
 
 
-  sitelist.to_csv('C:/Users/kna016/Documents/CABLE/OzFLUX_sitelist_v2.txt',sep="\t")
+  #sitelist.to_csv('C:/Users/kna016/Documents/CABLE/OzFLUX_sitelist_v2.txt',sep="\t")
 
 
 
