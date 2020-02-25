@@ -1,0 +1,1 @@
+25/02/2020: directories params and namelists deleted from this directory to avoid duplicates. Folders are available on the svn repository.

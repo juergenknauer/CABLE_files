@@ -1,29 +1,29 @@
-	startyear	endyear	latitude	longitude	canopy_height	tower_height	vegetation	NVIS5_Group	forest_fraction	grass_fraction	C4_fraction
-AdelaideRiver	2008	2008	-13.0769	131.1178	16.0	21.0	Woody Savanna	12	0.378	0.622	1.0
-AliceSpringsMulga	2011	2018	-22.283	133.249	6.0	13.0	Canopy + three types of understorey (vegetation1-4)	16	0.255	0.745	0.968
-Calperum	2011	2018	-34.00206	140.58912	3.0	20.0	Mallee	14	0.268	0.732	0.621
-CapeTribulation	2010	2017	-16.103219	145.446922	25.0	45.0	lowland complex mesophyll vine forest	1	0.9	0.1	0.753
-CowBay	2010	2018	-16.238189000000002	145.42715	26.0	35.0	lowland complex mesophyll vine forest	1	0.792	0.208	0.88
-CumberlandPlain	2013	2018	-33.615278	150.723611	23.0	30.0	Dry sclerophyll forest	25	0.724	0.276	0.64
-DalyPasture	2008	2012	-17.1507	133.3502	0.0	5.0	Tropical improved pasture	19	0.287	0.713	1.0
-DalyUncleared	2008	2018	-14.1592	131.3881	16.0	21.0	Woody Savanna	5	0.423	0.577	1.0
-DryRiver	2009	2018	-15.2588	132.3706	0.0	15.0	Woodland savanna	3	0.359	0.641	1.0
-Emerald	2012	2013	-23.85872	148.4746	0.0		Mallee and crop	25	0.305	0.695	0.891
-FoggDam	2007	2007	-12.5452	131.3072	0.0	5.0	Ephemeral tropical wetland	21	0.517	0.483	1.0
-Gingin	2012	2018	-31.375	115.65	6.0	15.0	low banksia woodland	10	0.579	0.421	0.481
-GreatWesternWoodlands	2013	2018	-30.1914	120.65416666700001	18.0	36.0	sparse eucalypt woodland	5	0.293	0.707	0.749
-HowardSprings	2002	2018	-12.4952	131.15005	16.0	23.0	Woody savanna	5	0.502	0.498	1.0
-Litchfield	2016	2018	-13.17904178	130.7945459	16.0	30.0	Woody savanna	3	0.417	0.583	0.986
-Otway	2008	2010	-38.525	142.81	0.0	9.0	Pasture, grazed	25	0.157	0.843	0.283
-RedDirtMelonFarm	2012	2012	-14.563639000000002	132.477567	16.0	21.0	Woody savannah then cleared	12	0.352	0.648	1.0
-Ridgefield	2016	2018	-32.506102	116.966827				25	0.275	0.725	0.467
-RiggsCreek	2011	2016	-36.656	145.576	0.0		Pasture	25	0.452	0.548	0.444
-RobsonCreek	2014	2018	-17.11746943	145.6301375	28.0	40.0	Regional Ecosystem (RE) 7.3.36a, complex mesophyll vine forest	1	0.894	0.106	0.757
-Samford	2011	2017	-27.38806	152.87778	0.0	2.0	pasture	3	0.78	0.22	0.785
-SturtPlains	2009	2017	-17.1507	133.3502	0.0		Mitchell Grasslands	19	0.287	0.713	1.0
-TiTreeEast	2013	2018	-22.287	133.64	4.0	10.0	Open Corymbia-hummock savanna and Mulga patches	20	0.151	0.849	0.974
-Tumbarumba	2002	2018	-35.6566	148.1516	40.0	70.0	wet sclerophyll forest	2	0.898	0.102	0.036
-Warra	2014	2018	-43.09502	146.65452	55.0	80.0	Eucalyptus obliqua tall forest	2	0.85	0.15	0.035
-Whroo	2012	2016	-36.6732	145.0294	28.0	35.0	Dry sclerophyll woodland	3	0.533	0.467	0.459
-WombatStateForest	2011	2018	-37.4222	144.0944			Dry sclerophyll eucalypt forest	3	0.826	0.174	0.125
-Yanco	2013	2018	-34.9893	146.2907	0.3		Pasture	25	0.218	0.782	0.628
+	startyear	endyear	latitude	longitude	canopy_height	tower_height	reference_height	vegetation	NVIS5_Group	forest_fraction	grass_fraction	C4_fraction
+AdelaideRiver	2008	2008	-13.0769	131.1178	16.0	21.0	15.0	Woody Savanna	12	0.378	0.622	1.0
+AliceSpringsMulga	2011	2018	-22.283	133.249	6.0	13.0	11.6	Canopy + three types of understorey (vegetation1-4)	16	0.255	0.745	0.968
+Calperum	2011	2018	-34.00206	140.58912	3.0	20.0	20.0	Mallee	14	0.268	0.732	0.621
+CapeTribulation	2010	2017	-16.103219	145.446922	25.0	45.0	45.0	lowland complex mesophyll vine forest	1	0.9	0.1	0.753
+CowBay	2010	2018	-16.238189000000002	145.42715	26.0	35.0	35.0	lowland complex mesophyll vine forest	1	0.792	0.208	0.88
+CumberlandPlain	2013	2018	-33.615278	150.723611	23.0	30.0	29.0	Dry sclerophyll forest	25	0.724	0.276	0.64
+DalyPasture	2008	2012	-17.1507	133.3502	0.0	5.0	15.0	Tropical improved pasture	19	0.287	0.713	1.0
+DalyUncleared	2008	2018	-14.1592	131.3881	16.0	21.0	23.0	Woody Savanna	5	0.423	0.577	1.0
+DryRiver	2009	2018	-15.2588	132.3706	0.0	15.0	15.0	Woodland savanna	3	0.359	0.641	1.0
+Emerald	2012	2013	-23.85872	148.4746	0.0		6.0	Mallee and crop	25	0.305	0.695	0.891
+FoggDam	2007	2007	-12.5452	131.3072	0.0	5.0	14.5	Ephemeral tropical wetland	21	0.517	0.483	1.0
+Gingin	2012	2018	-31.375	115.65	6.0	15.0	15.0	low banksia woodland	10	0.579	0.421	0.481
+GreatWesternWoodlands	2013	2018	-30.1914	120.65416666700001	18.0	36.0	35.0	sparse eucalypt woodland	5	0.293	0.707	0.749
+HowardSprings	2002	2018	-12.4952	131.15005	16.0	23.0	23.0	Woody savanna	5	0.502	0.498	1.0
+Litchfield	2016	2018	-13.17904178	130.7945459	16.0	30.0	31.0	Woody savanna	3	0.417	0.583	0.986
+Otway	2008	2010	-38.525	142.81	0.0	9.0	4.5	Pasture, grazed	25	0.157	0.843	0.283
+RedDirtMelonFarm	2012	2012	-14.563639000000002	132.477567	16.0	21.0	21.0	Woody savannah then cleared	12	0.352	0.648	1.0
+Ridgefield	2016	2018	-32.506102	116.966827			2.5	25	0.275	0.725	0.467
+RiggsCreek	2011	2016	-36.656	145.576	0.0		2.5	Pasture	25	0.452	0.548	0.444
+RobsonCreek	2014	2018	-17.11746943	145.6301375	28.0	40.0	40.0	Regional Ecosystem (RE) 7.3.36a, complex mesophyll vine forest	1	0.894	0.106	0.757
+Samford	2011	2017	-27.38806	152.87778	0.0	2.0	2.0	pasture	3	0.78	0.22	0.785
+SturtPlains	2009	2017	-17.1507	133.3502	0.0		4.8	Mitchell Grasslands	19	0.287	0.713	1.0
+TiTreeEast	2013	2018	-22.287	133.64	4.0	10.0	9.8	Open Corymbia-hummock savanna and Mulga patches	20	0.151	0.849	0.974
+Tumbarumba	2002	2018	-35.6566	148.1516	40.0	70.0	70.0	wet sclerophyll forest	2	0.898	0.102	0.036
+Warra	2014	2018	-43.09502	146.65452	55.0	80.0	81.0	Eucalyptus obliqua tall forest	2	0.85	0.15	0.035
+Whroo	2012	2016	-36.6732	145.0294	28.0	35.0	36.0	Dry sclerophyll woodland	3	0.533	0.467	0.459
+WombatStateForest	2011	2018	-37.4222	144.0944			30.0	Dry sclerophyll eucalypt forest	3	0.826	0.174	0.125
+Yanco	2013	2018	-34.9893	146.2907	0.3		8.0	Pasture	25	0.218	0.782	0.628

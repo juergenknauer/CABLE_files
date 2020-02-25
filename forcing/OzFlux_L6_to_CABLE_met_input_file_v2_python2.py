@@ -23,6 +23,9 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import calendar
 
+# python 2 only
+import urllib2
+
 #rootgrp.close()
 
 
@@ -560,7 +563,7 @@ generate_site_list      = False     # print site list after the loop?
 full_years_only         = True     # take full years only?
 add_end_start_timesteps = True     # replicate first/last timesteps if they are missing?
                                    # timeseries is expected to start at 00:00 and end at 23:00
-multiple_tiles          = True     # 1 (False) or more tiles (True)?
+multiple_tiles          = False     # 1 (False) or more tiles (True)?
 OzFlux_default          = True     # use default OzFlux processing (True) or site-specific processing 
                                    # as provided by the site PIs (False)? ATTENTION: only set up for CumberlandPlain at the moment!!!! check LAI calculation if applied to other sites
 Elise_2019              = False     # special case: EC data from Elise (Dec. 2019) with specific requirements
@@ -569,8 +572,8 @@ Elise_2019              = False     # special case: EC data from Elise (Dec. 201
 ## constants
 day2sec     = 86400.
 Kelvin      = 273.15
-k           = 0.5     # extinction coefficient in the LAI calculations (Trudinger et al. 2016, Biogeosciences)
-fcorr_patch = 0.65    # correction factor related to fraction of woody and grass (nadir vs. projected)
+k           = 0.5   # extinction coefficient in the LAI calculations (Trudinger et al. 2016, Biogeosciences)
+fcorr_patch = 0.65
 
 
 ## paths
@@ -578,12 +581,13 @@ fcorr_patch = 0.65    # correction factor related to fraction of woody and grass
 basepath='/OSM/CBR/OA_GLOBALCABLE/work/CABLE_files/forcing/'
 metpath='/OSM/CBR/OA_GLOBALCABLE/work/BIOS3_forcing/site_met/'
 
+
 ## stuff related to cover fraction file
 fcover   = pd.read_csv(basepath + 'cover_fract/ozflux28.gimms3g_fcovfperfrec.csv',index_col='PointName')
 fcov_index = [k for k, i in enumerate(fcover.index) if '9999' in i and 'fcov' in i]
 fper_index = [k for k, i in enumerate(fcover.index) if '9999' in i and 'fper' in i]
 frec_index = [k for k, i in enumerate(fcover.index) if '9999' in i and 'frec' in i]
-fcover_sites = list(fcover.columns)
+fcover_sites=list(fcover.columns)
 
 
 ## initialize lists
@@ -601,8 +605,9 @@ all_sites = 'AdelaideRiver', 'AliceSpringsMulga', 'Calperum', 'CapeTribulation',
 'DryRiver', 'Emerald', 'FoggDam', 'Gingin', 'GreatWesternWoodlands', 'HowardSprings', 'Litchfield', 'Loxton', 'Nimmo', 'Otway', 'RedDirtMelonFarm', \
 'Ridgefield', 'RiggsCreek', 'RobsonCreek', 'Samford', 'SturtPlains', 'TiTreeEast', 'Tumbarumba', 'WallabyCreek', 'Warra', 'Whroo', 'WombatStateForest', \
 'Yanco'
-all_sites = ('Ridgefield',)
-   
+all_sites = ('AdelaideRiver',)
+
+
 
 elevation = list(itertools.repeat(-9999,len(all_sites)))
 #elevation[-6] = 1200
@@ -615,6 +620,7 @@ LAI = list(itertools.repeat(-9999,len(all_sites)))
 
 ### 0) load site list and check if all sites are included
 sitelist = pd.read_csv(basepath + 'OzFLUX_sitelist_v5.txt',sep="\t",index_col=0)
+
 
 ## short excercise: extract all start and end dates from the sites
 #start_date = []
@@ -662,15 +668,14 @@ for s,site in enumerate(all_sites):
   
   ### 1) download nc files from the Ozflux webpage
   now = datetime.datetime.now()
-  #outdir = 'C:/Users/kna016/Documents/CABLE/OzFluxL6/' + str(now.year) + '_' + str(now.month) + '_' + str(now.day) + '/'
   outdir='/OSM/CBR/OA_GLOBALCABLE/work/Data_EC/OzFlux/' + str(now.year) + '_' + str(now.month) + '_' + str(now.day) + '/'
+  #outdir = 'C:/Users/kna016/Documents/CABLE/OzFluxL6/' + str(now.year) + '_' + str(now.month) + '_' + str(now.day) + '/'
   #outfile='D:/CSIRO/CABLE/OzFluxL6/' + site + '.nc'
   #outfile='C:/Users/kna016/Documents/CABLE/forcing_files/Cumberland_Elise/L6_merged_filled.nc'
   #outfile='C:/Users/kna016/Documents/CABLE/OzFluxL6/2019_6_17/CumberlandPlain_L6.nc'
-  try:
+  if not os.path.isdir(outdir):
     os.mkdir(outdir)
-  except FileExistsError:
-    pass
+
   
   
   metfile_present = True
@@ -679,30 +684,36 @@ for s,site in enumerate(all_sites):
     l = 6
     while l > 3:
       ls = str(l)
-      try:
-        outfile=outdir + site + '_L' + ls + '.nc'
-        if OzFlux_default:
-          url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/default/' + site + '_L' + ls + '.nc'  # note: 'fileServer' instead of 'catalog' (was not working with 'dodsC') 
-        else:
-          url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/site_pi/' + site + '_L' + ls + '.nc'
-        urllib.request.urlretrieve(url,outfile)  # this is python 3 code. Use urllib.urlretrieve for python 2
-        break
-      
-        
-            
-      except urllib.error.HTTPError:
+#      try:
+      outfile=outdir + site + '_L' + ls + '.nc'
+      if OzFlux_default:
+        url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/default/' + site + '_L' + ls + '.nc'  # note: 'fileServer' instead of 'catalog' (was not working with 'dodsC') 
+      else:
+        url='http://dap.ozflux.org.au/thredds/fileServer/ozflux/sites/' + site + '/L' + ls + '/site_pi/' + site + '_L' + ls + '.nc'
+      urllib.urlretrieve(url,outfile)  # use urllib.request.urlretrieve for python 3
+                 
+      #except urllib2.HTTPError:  # doesn't work with python 2 ...
+      if not os.path.isfile(outfile):
         if l > 4:
           print("no L" + ls + " data available online for site '" + site + "'! Trying L" + str(l-1) + " next.")
         else:
           print("no data available online for site '" + site + "'! Continue with next site.")
           metfile_present=False
         l=l-1
+      else:
+        break
+        
      
      
   if metfile_present:
-    ### 2) load nc file and write into a structured 'OzFlux' object and retrieve meteorological variables 
-    ds = nc_read_series(outfile,checktimestep=False)
-    
+    ### 2) load nc file and write into a structured 'OzFlux' object and retrieve meteorological variables
+    try:
+      ds = nc_read_series(outfile,checktimestep=False)
+    except IOError:
+      print("nc file can't be read for site '" + site + "'! Continue with next site.")
+      continue
+
+      
     # delete nc_nrecs global attribute if not consistent with the actual length
     if ds.globalattributes["nc_nrecs"] != len(ds.series['time']['Data']):
       del ds.globalattributes["nc_nrecs"]
@@ -894,6 +905,7 @@ for s,site in enumerate(all_sites):
           #valid_days_end = list(np.where(date <= datetime.datetime(enddate_orig.year,enddate_orig.month,enddate_orig.day))[0])
           valid_days_end = list(np.where(date < datetime.datetime(enddate_orig.year,enddate_orig.month,enddate_orig.day))[0])
           
+          
 ## old version, assuming that the time stamp marks the beginning of the time step:        
 #      if start_hour != '00:00':
 #        if (full_years_only==False and start_day != '01-01') or start_day == '01-01':   # don't add the half hour because year will be deleted later
@@ -959,8 +971,7 @@ for s,site in enumerate(all_sites):
     # valid_days[0]   
     # valid_days[-1] 
     
-    
-      
+         
     ### 5) take full years only
     valid_years = list(range(0,len(date)))
     if full_years_only:
@@ -1022,7 +1033,11 @@ for s,site in enumerate(all_sites):
               canopy_height.append(float(canopy_height_string[0:2]))
             except ValueError:
               if len(canopy_height_string) > 0:
-                canopy_height.append(float(canopy_height_string[0:1]))
+                try:
+                  canopy_height.append(float(canopy_height_string[0:1]))
+                except ValueError:
+                  print("canopy height is not available")
+                  canopy_height.append(None)
               else:
                 print("canopy height is not available")
                 canopy_height.append(None)
@@ -1042,7 +1057,7 @@ for s,site in enumerate(all_sites):
         if site == 'Gingin':
           latitude.append(-31.375)
           longitude.append(115.65)
-        else:    
+        else:
           latitude.append(float(ds.globalattributes['latitude']))
           longitude.append(float(ds.globalattributes['longitude']))
       
@@ -1059,15 +1074,15 @@ for s,site in enumerate(all_sites):
       
       
       ### 7) create empty nc file from scratch
-      path_met = metpath # for use on Pearcey
+      path_met = metpath  # for use on Pearcey
       #if full_years_only == True and add_end_start_timesteps == True:
-      #  path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/fullyears_fulldays/'
+      #  path_met = basepath + 'forcing_files/fullyears_fulldays/'
       #elif full_years_only == True and add_end_start_timesteps == False:
-      #  path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/fullyears'
+      #  path_met = basepath + 'forcing_files/fullyears/'
       #elif full_years_only == False and add_end_start_timesteps == True:
-      #  path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/fulldays'
+      #  path_met = basepath + 'forcing_files/fulldays/'
       #elif full_years_only == False and add_end_start_timesteps == False:
-      #  path_met = 'C:/Users/kna016/Documents/CABLE/forcing_files/no_change'
+      #  path_met = basepath + 'forcing_files/no_change/'
         
     
         
@@ -1226,11 +1241,11 @@ for s,site in enumerate(all_sites):
         else:
           lat[:] = float(ds.globalattributes['latitude'])
           lon[:] = float(ds.globalattributes['longitude'])
-      try:  
-        ref_h[:] = sitelist.loc[site,'reference_height']  
+      try:
+        ref_h[:] = sitelist.loc[site,'reference_height']
       except KeyError:
         pass
-        
+    
       # LAI_val[:]   = np.ones(ts_len)*LAI[s]
       
       
@@ -1238,7 +1253,7 @@ for s,site in enumerate(all_sites):
       
       if site == 'WallabyCreek':
         print('fcover and C4 fraction not yet available for site WallabyCreek. LAI calculations skipped for now...')
-      else:  
+      else:
         ## vegetation classification 
         NVIS5_class = sitelist.loc[site,'NVIS5_Group']
         C4_fract = sitelist.loc[site,'C4_fraction']
@@ -1258,11 +1273,10 @@ for s,site in enumerate(all_sites):
         ## LAI (Trudinger et al. 2016, Biogeosciences)
         # 1) load fPAR data (values interpreted to represent the middle of the month)
         site_nr = fcover_sites.index(site)
-        
+          
         fw = np.array(fcover.iloc[fper_index,site_nr])
         fg = np.array(fcover.iloc[frec_index,site_nr])
           
-        
         # 2) calculate monthly LAI (Trudinger et al. 2016, Biogeosciences)
         LAIw_monthly = -1/k * np.log(1-fw)
         LAIg_monthly = -1/k * np.log(numpy.maximum(1-(fg/(1 - fg)), 0.01))   # boundaries need to be better defined here!
@@ -1279,6 +1293,7 @@ for s,site in enumerate(all_sites):
         LAIg = []
           
         years = range(int(str_startyear),int(str_endyear)+1)   # why +1 here??
+        print('years:' + str(years))
         for yr in years:
           # print(yr)
           if calendar.isleap(yr):
@@ -1289,7 +1304,7 @@ for s,site in enumerate(all_sites):
           x = (numpy.cumsum(dpm)-15.5) * 24 * 3600 
           x2= np.arange(x[0],x[-1],timestep) 
         
-          fun_interp_w = interp1d(x,LAIw_monthly2,kind='cubic')     # gives the function to interpolate
+          fun_interp_w = interp1d(x,LAIw_monthly2,kind='cubic')   # gives the function to interpolate
           fun_interp_g = interp1d(x,LAIg_monthly2,kind='cubic')
             
           LAIw_timestep = fun_interp_w(x2)
@@ -1308,13 +1323,14 @@ for s,site in enumerate(all_sites):
           #LAI_total = LAIw + LAIg  # incorrect
           frac_forest0 = sitelist.loc[site,'forest_fraction']
           frac_grass0 = sitelist.loc[site,'grass_fraction']
-          
+
           frac_forest = min(frac_forest0/fcorr_patch,1.0)
-          frac_grass  = 1.0 - frac_forest 
+          frac_grass  = 1.0 - frac_forest
           
           LAI_total = LAIw * frac_forest + LAIg * frac_grass
           
           #plt.plot(x,LAIg_monthly2,'o',x2,fun_interp_g(x2),'-')
+          
           
         if multiple_tiles:
           LAI_val[:,0,:,:] = LAIw
